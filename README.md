@@ -1,14 +1,15 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
-    <img src="assets/logo.svg" width="132" alt="Ideamart Skill for Agents">
-  </picture>
+  <img src="assets/ideamart-logo.png" width="220" alt="Ideamart — ideas that reach">
 </p>
 
 <h1 align="center">Ideamart Skill for Agents</h1>
 
 <p align="center">
   <em>Telco integrations your AI agent gets right the first time.</em>
+</p>
+
+<p align="center">
+  <sub>by <strong>hSenid Mobile Solutions</strong> for <strong>Ideamart</strong></sub>
 </p>
 
 <p align="center">
@@ -382,9 +383,22 @@ no network calls and never reads your credentials. See [SECURITY.md](SECURITY.md
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE). Copyright © 2026 hSenid Mobile Solutions (Pvt) Ltd — Ideamart.
+
+Ideamart and the Ideamart logo are trademarks of hSenid Mobile Solutions (Pvt) Ltd, and are
+not licensed under the MIT terms.
 
 ---
 
-<sub>Not an official Ideamart or Dialog Axiata product. Verify anything security- or
-billing-critical against the official documentation before going live.</sub>
+<p align="center">
+  <a href="https://www.hsenidmobile.com">
+    <img src="assets/hsenid-logo.png" width="240" alt="hSenid Mobile — co-creating the future">
+  </a>
+</p>
+
+<p align="center">
+  <sub>Built by <a href="https://www.hsenidmobile.com">hSenid Mobile Solutions</a> for
+  <a href="https://ideamart.io">Ideamart</a>.</sub><br>
+  <sub>The platform evolves — verify anything security- or billing-critical against
+  <a href="https://docs.ideamart.io">docs.ideamart.io</a> before going live.</sub>
+</p>

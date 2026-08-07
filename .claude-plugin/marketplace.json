@@ -2,7 +2,10 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "ideamart",
   "description": "Ideamart telco integration skills for AI agents — SMS, USSD, Subscription, OTP, CaaS charging and LBS.",
-  "owner": { "name": "Ideamart Skill contributors", "url": "https://github.com/OWNER/IdeamartSkillForAgents" },
+  "owner": {
+    "name": "hSenid Mobile Solutions",
+    "url": "https://www.hsenidmobile.com"
+  },
   "plugins": [
     {
       "name": "ideamart",

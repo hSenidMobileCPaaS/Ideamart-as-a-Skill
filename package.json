@@ -20,9 +20,16 @@
     "cursor-rules"
   ],
   "homepage": "https://github.com/OWNER/IdeamartSkillForAgents",
-  "repository": { "type": "git", "url": "git+https://github.com/OWNER/IdeamartSkillForAgents.git" },
-  "bugs": { "url": "https://github.com/OWNER/IdeamartSkillForAgents/issues" },
-  "bin": { "ideamart": "./tools/ideamart.mjs" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OWNER/IdeamartSkillForAgents.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OWNER/IdeamartSkillForAgents/issues"
+  },
+  "bin": {
+    "ideamart": "./tools/ideamart.mjs"
+  },
   "files": [
     "SKILL.md",
     "AGENTS.md",
@@ -42,5 +49,11 @@
     "sync": "node scripts/sync-rules.mjs",
     "check": "node scripts/sync-rules.mjs --check && npm test"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  },
+  "author": {
+    "name": "hSenid Mobile Solutions",
+    "url": "https://www.hsenidmobile.com"
+  }
 }

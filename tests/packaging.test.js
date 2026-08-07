@@ -127,14 +127,34 @@ test("governance files exist", () => {
   }
 });
 
-test("assets exist and are well-formed SVG", () => {
-  for (const f of ["assets/logo.svg", "assets/logo-dark.svg", "assets/architecture.svg", "assets/social-preview.svg"]) {
+test("SVG assets are well-formed and labelled", () => {
+  for (const f of ["assets/architecture.svg", "assets/social-preview.svg"]) {
     const svg = read(f);
     assert.match(svg, /^<svg[\s>]/m, `${f} does not start with an <svg> element`);
     assert.match(svg, /<\/svg>\s*$/, `${f} is not closed`);
     assert.match(svg, /xmlns="http:\/\/www\.w3\.org\/2000\/svg"/, `${f} has no xmlns`);
     assert.match(svg, /role="img"|aria-label=/, `${f} has no accessible label`);
   }
+});
+
+test("brand logos are present as transparent PNGs", () => {
+  for (const f of ["assets/ideamart-logo.png", "assets/hsenid-logo.png"]) {
+    const path = join(repoRoot, f);
+    assert.ok(existsSync(path), `missing ${f}`);
+    const buf = readFileSync(path);
+    assert.equal(buf.readUInt32BE(0), 0x89504e47, `${f} is not a PNG`);
+    // IHDR colour type 6 = RGBA, so the logo sits on any background.
+    assert.equal(buf[25], 6, `${f} has no alpha channel — it will show a box in dark mode`);
+  }
+});
+
+test("attribution names hSenid Mobile Solutions for Ideamart", () => {
+  assert.match(read("LICENSE"), /hSenid Mobile Solutions \(Pvt\) Ltd/);
+  assert.match(read("README.md"), /hSenid Mobile Solutions<\/strong> for <strong>Ideamart/);
+  for (const m of [".claude-plugin/plugin.json", ".codex-plugin/plugin.json", "package.json"]) {
+    assert.equal(readJson(m).author.name, "hSenid Mobile Solutions", `${m} author is wrong`);
+  }
+  assert.equal(readJson(".claude-plugin/marketplace.json").owner.name, "hSenid Mobile Solutions");
 });
 
 test("every asset referenced by the README exists", () => {

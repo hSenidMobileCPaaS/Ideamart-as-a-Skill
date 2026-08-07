@@ -2,6 +2,7 @@ name: ideamart
 version: 1.0.0
 description: Ideamart telco integration for AI agents — always-on context, bundled skills, and slash commands.
 license: MIT
+author: hSenid Mobile Solutions
 provides_skills:
   - ideamart
   - ideamart-scaffold

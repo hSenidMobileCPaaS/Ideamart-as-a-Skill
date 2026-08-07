@@ -44,7 +44,8 @@ This skill is documentation, reference templates, and an offline CLI. It:
 The `scripts/smoke-test.*` scripts do call Ideamart, deliberately, using credentials from your
 environment. Read them before running them, and note that `--with-charge` moves real money.
 
-## Not an official Ideamart product
+## Maintenance
 
-Verify anything security- or billing-critical against <https://docs.ideamart.io> before going
-live.
+Maintained by hSenid Mobile Solutions for Ideamart. The platform evolves, so verify anything
+security- or billing-critical against <https://docs.ideamart.io> before going live, and
+confirm with support what your application is actually provisioned for.
