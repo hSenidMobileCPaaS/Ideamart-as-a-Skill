@@ -12,19 +12,9 @@
   <sub>by <strong>hSenid Mobile Solutions</strong> for <strong>Ideamart</strong></sub>
 </p>
 
-<!--
-  While this repository is private, shields.io cannot read it (it fetches
-  anonymously and gets a 404), so every dynamic github/* badge renders as
-  "repo not found". GitHub's own actions badge below is served by GitHub and
-  resolves for anyone who can see the repo.
-
-  When the repository goes public, these can become live shields badges:
-    https://img.shields.io/github/actions/workflow/status/hSenidMobileCPaaS/Ideamart-as-a-Skill/ci.yml?branch=main
-    https://img.shields.io/github/license/hSenidMobileCPaaS/Ideamart-as-a-Skill
--->
 <p align="center">
-  <a href="https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill/actions/workflows/ci.yml"><img src="https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-E11D74?style=flat-square" alt="MIT license"></a>
+  <a href="https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/hSenidMobileCPaaS/Ideamart-as-a-Skill/ci.yml?branch=main&style=flat-square&label=CI&color=E11D74" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/hSenidMobileCPaaS/Ideamart-as-a-Skill?style=flat-square&color=E11D74" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/endpoints-14-E11D74?style=flat-square" alt="14 endpoints">
   <img src="https://img.shields.io/badge/callbacks-5-E11D74?style=flat-square" alt="5 callbacks">
   <img src="https://img.shields.io/badge/status%20codes-80%2B-E11D74?style=flat-square" alt="80+ status codes">
@@ -394,10 +384,12 @@ no network calls and never reads your credentials. See [SECURITY.md](SECURITY.md
 
 ## License
 
-[MIT](LICENSE). Copyright © 2026 hSenid Mobile Solutions (Pvt) Ltd — Ideamart.
+[MIT](LICENSE). Copyright © 2026 hSenid Mobile Solutions (Pvt) Ltd.
 
-Ideamart and the Ideamart logo are trademarks of hSenid Mobile Solutions (Pvt) Ltd, and are
-not licensed under the MIT terms.
+The MIT grant covers the code and documentation. **Ideamart**, **hSenid Mobile**, and their
+logos are trademarks of hSenid Mobile Solutions (Pvt) Ltd and are not licensed under it — see
+[TRADEMARKS.md](TRADEMARKS.md). If you fork this repository, replace the brand assets with
+your own.
 
 ---
 

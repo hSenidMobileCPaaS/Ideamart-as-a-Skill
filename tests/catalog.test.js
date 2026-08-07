@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, existsSync, readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import {
   allEntries,
@@ -358,8 +359,11 @@ test("no credential-shaped string is committed anywhere", () => {
     { name: "env password value", re: /IDEAMART_PASSWORD=[A-Za-z0-9]{12,}/ },
   ];
 
+  // ci.yml is excluded because it contains the patterns as its own source text.
+  // Nothing else is excluded — including this file, which is why the fixture
+  // below is generated at runtime rather than written as a literal.
   const skipDirs = new Set([".git", "node_modules"]);
-  const skipFiles = new Set(["ci.yml", "catalog.test.js"]);
+  const skipFiles = new Set(["ci.yml"]);
   const offenders = [];
 
   const walk = (dir) => {
@@ -407,7 +411,12 @@ test("documented placeholders do not trip the credential scan", () => {
     assert.equal(envRe.test(placeholder), false, `"${placeholder}" must not be flagged`);
   }
   // ...but a real one must still be caught.
-  assert.equal(envRe.test("IDEAMART_PASSWORD=cf2b9e361c13bc54b86d3c8180b0fd242"), true);
+  //
+  // Generated at runtime, never written as a literal: a credential-shaped
+  // string committed here would be flagged by the very scan it is testing,
+  // which is exactly what happened the first time round.
+  const credentialShaped = randomBytes(16).toString("hex"); // 32 hex chars
+  assert.equal(envRe.test(`IDEAMART_PASSWORD=${credentialShaped}`), true);
 });
 
 test("the only contact number in the docs is the support WhatsApp number", () => {
