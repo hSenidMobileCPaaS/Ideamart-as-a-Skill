@@ -345,10 +345,69 @@ test("every service endpoint variable maps to a real catalog service", () => {
   }
 });
 
-test("no committed file contains the placeholder-free password pattern", () => {
-  const suspicious = /IDEAMART_PASSWORD\s*=\s*(?!replace-me|"?\$|\s*$)[A-Za-z0-9]{12,}/;
-  const envExample = readFileSync(join(repoRoot, "templates", ".env.example"), "utf8");
-  assert.equal(suspicious.test(envExample), false, ".env.example must only hold placeholders");
+/**
+ * The same three patterns the CI secrets job runs, so a leak fails locally
+ * before it reaches a push. These detect what a real credential looks like
+ * rather than allowlisting placeholder spellings — a real Ideamart password is
+ * a long unbroken alphanumeric run, which "replace-me", "…", "" and "$VAR"
+ * never are.
+ */
+test("no credential-shaped string is committed anywhere", () => {
+  const patterns = [
+    { name: "JSON password value", re: /"password"\s*:\s*"[A-Za-z0-9]{16,}"/ },
+    { name: "env password value", re: /IDEAMART_PASSWORD=[A-Za-z0-9]{12,}/ },
+  ];
+
+  const skipDirs = new Set([".git", "node_modules"]);
+  const skipFiles = new Set(["ci.yml", "catalog.test.js"]);
+  const offenders = [];
+
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!skipDirs.has(entry.name)) walk(join(dir, entry.name));
+        continue;
+      }
+      if (skipFiles.has(entry.name)) continue;
+      const path = join(dir, entry.name);
+      let content;
+      try {
+        content = readFileSync(path, "utf8");
+      } catch {
+        continue; // binary or unreadable
+      }
+      for (const { name, re } of patterns) {
+        if (re.test(content)) {
+          offenders.push(`${path.replace(repoRoot, ".")} — ${name}`);
+        }
+      }
+    }
+  };
+
+  walk(repoRoot);
+  assert.deepEqual(
+    offenders,
+    [],
+    `credential-shaped strings found:\n${offenders.join("\n")}\n` +
+      `Rotate the credential in the Ideamart portal before anything else — see SECURITY.md.`
+  );
+});
+
+test("documented placeholders do not trip the credential scan", () => {
+  // Regression guard: these are the placeholder spellings actually used in the
+  // repo. An earlier allowlist-based scan broke CI when "…" was introduced.
+  const envRe = /IDEAMART_PASSWORD=[A-Za-z0-9]{12,}/;
+  for (const placeholder of [
+    "IDEAMART_PASSWORD=replace-me",
+    "IDEAMART_PASSWORD=…",
+    "IDEAMART_PASSWORD=",
+    "IDEAMART_PASSWORD=$IDEAMART_PASSWORD",
+    "IDEAMART_PASSWORD=<your-password>",
+  ]) {
+    assert.equal(envRe.test(placeholder), false, `"${placeholder}" must not be flagged`);
+  }
+  // ...but a real one must still be caught.
+  assert.equal(envRe.test("IDEAMART_PASSWORD=cf2b9e361c13bc54b86d3c8180b0fd242"), true);
 });
 
 test("the only contact number in the docs is the support WhatsApp number", () => {

@@ -48,13 +48,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: No credential-shaped strings committed
+        # Detect what a real credential looks like, rather than maintaining an
+        # allowlist of placeholder spellings — a new placeholder style should
+        # never break the build.
+        #
+        # A real Ideamart password is a long unbroken alphanumeric run (the
+        # documented ones are 32 hex characters). Placeholders never are:
+        # "replace-me" has a hyphen, "…" is not alphanumeric, "$VAR" starts
+        # with a sigil, and an empty value has nothing after the "=".
+        #
+        # ci.yml is excluded from its own scan, or the patterns match themselves.
         run: |
-          if grep -rInE '"password"[[:space:]]*:[[:space:]]*"[0-9a-f]{16,}"' --exclude-dir=.git .; then
+          set -uo pipefail
+          found=0
+
+          if grep -rInE '"password"[[:space:]]*:[[:space:]]*"[A-Za-z0-9]{16,}"' \
+               --exclude-dir=.git --exclude=ci.yml .; then
             echo "::error::A credential-shaped password value is committed."
-            exit 1
+            found=1
           fi
-          if grep -rIn 'IDEAMART_PASSWORD=' --exclude-dir=.git --exclude=.env.example . | grep -vE '=(\s*$|replace-me|\$)'; then
-            echo "::error::A non-placeholder IDEAMART_PASSWORD is committed."
+
+          if grep -rInE 'IDEAMART_PASSWORD=[A-Za-z0-9]{12,}' \
+               --exclude-dir=.git --exclude=ci.yml .; then
+            echo "::error::A real-looking IDEAMART_PASSWORD is committed."
+            found=1
+          fi
+
+          if grep -rInE 'applicationId"[[:space:]]*:[[:space:]]*"APP_[0-9]{6}"[^}]*"password"[[:space:]]*:[[:space:]]*"[A-Za-z0-9]{16,}"' \
+               --exclude-dir=.git --exclude=ci.yml .; then
+            echo "::error::A complete applicationId + password pair is committed."
+            found=1
+          fi
+
+          if [ "$found" -ne 0 ]; then
+            echo "Rotate the credential in the Ideamart portal before anything else — see SECURITY.md."
             exit 1
           fi
           echo "No credentials found."
