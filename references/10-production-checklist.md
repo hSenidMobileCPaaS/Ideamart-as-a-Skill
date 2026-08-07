@@ -68,7 +68,7 @@ provider something real.
 - [ ] Amounts use a decimal type
 - [ ] Amount and currency sourced server-side, never from client input
 - [ ] Charged amount matches exactly what was disclosed before subscription
-- [ ] Balance query gated off for regions where it is unavailable (Smart/Cambodia)
+- [ ] Balance query gated off unless "Enable Query Balance Requests" is provisioned
 - [ ] Reconciliation job compares your ledger against charging notifications
 
 ## Consent and compliance

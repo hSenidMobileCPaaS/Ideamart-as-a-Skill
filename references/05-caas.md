@@ -9,7 +9,7 @@ breaking it costs someone money.
 | Service | Endpoint | Availability |
 |---|---|---|
 | **Direct Debit** | `POST /caas/direct/debit` | All operators |
-| **Query Balance** | `POST /caas/balance/query` | **Sri Lanka only** — not available for Smart (Cambodia) |
+| **Query Balance** | `POST /caas/balance/query` | Requires **Enable Query Balance Requests** in CaaS provisioning |
 | **Charging Notification** | Your callback URL | All |
 
 ---
@@ -138,8 +138,9 @@ and why a debit is not instantaneous. Never block a USSD session on it.
 
 ## Query Balance
 
-Check available balance before attempting a charge. **Sri Lanka only** — this service is not
-available under Ideamart by Smart.
+Check available balance before attempting a charge. Requires **Enable Query Balance Requests**
+to be switched on in your application's CaaS common configuration — otherwise the call fails
+regardless of how correct the payload is.
 
 ```
 POST /caas/balance/query
@@ -162,7 +163,7 @@ Content-Type: application/json
 | `password` | Password | **M** |
 | `subscriberId` | MSISDN or username of the subscriber being queried | **M** |
 | `accountId` | Account of the payment instrument — single value per request | O |
-| `currency` | Must be `LKR`; service is only available for Dialog, Airtel and Hutch | O |
+| `currency` | Must be `LKR` | O |
 
 ```json
 {
@@ -187,8 +188,9 @@ Notes:
   for equality. Use a decimal type for money.
 - A balance check is **advisory, not a reservation**. The balance can change between the query
   and the debit. Always handle `E1378` on the debit regardless of what the query said.
-- Gate the call on region: if the deployment targets Smart/Cambodia, skip it rather than
-  letting it fail. Make it a config flag (`IDEAMART_BALANCE_QUERY_ENABLED`).
+- Gate the call on a config flag (`IDEAMART_BALANCE_QUERY_ENABLED`) that mirrors your
+  provisioning. If the feature is not enabled for your app, skip the call rather than letting
+  it fail on every charge attempt.
 
 ---
 

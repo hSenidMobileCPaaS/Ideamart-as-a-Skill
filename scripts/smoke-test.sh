@@ -102,7 +102,7 @@ if [ "${IDEAMART_BALANCE_QUERY_ENABLED:-true}" = "true" ]; then
   call "Query Balance" "$BASE_URL/caas/balance/query" \
     "{$creds,\"subscriberId\":\"tel:$TEST_MSISDN\",\"currency\":\"LKR\"}"
 else
-  printf '%-28s%s\n' "Query Balance" "${DIM}skipped (disabled — Smart/Cambodia)${NC}"
+  printf '%-28s%s\n' "Query Balance" "${DIM}skipped (IDEAMART_BALANCE_QUERY_ENABLED=false)${NC}"
 fi
 
 if [ "$WITH_CHARGE" = true ]; then

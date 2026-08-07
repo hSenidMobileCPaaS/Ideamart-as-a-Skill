@@ -147,14 +147,14 @@ other fields apply:
 
 ## IVR / Voice
 
-**There is no publicly documented Ideamart IVR or voice API at the time of writing.**
+**IVR Developer documentation will be updated shortly**
 <https://docs.ideamart.io> publishes SMS, USSD, Subscription, OTP, Charging and LBS only.
 
 Do not invent endpoints, parameter names or status codes for IVR. If a user asks for it:
 
 1. Tell them it is not in the public developer documentation.
 2. Point them at support to ask whether voice/IVR is available for their operator and account:
-   `info@ideamart.io` (Sri Lanka) or `info@ideamart.com.kh` (Cambodia).
+   `info@ideamart.io`, hotline 0773054056.
 3. Offer the alternative that usually solves the real requirement: **USSD** covers interactive
    menus on any handset without needing voice, and **SMS** covers notification delivery.
 

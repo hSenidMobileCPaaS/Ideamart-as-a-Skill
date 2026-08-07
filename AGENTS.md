@@ -4,13 +4,13 @@
 > other agent that reads `AGENTS.md`. Claude Code and the Agent SDK use [SKILL.md](SKILL.md) —
 > same content, skill frontmatter.
 
-Ideamart is Axiata's telco platform (Dialog, Airtel, Hutch in Sri Lanka; Smart in Cambodia).
-It exposes SMS, USSD, subscription management, mobile-account charging and location as
-JSON-over-HTTPS APIs.
+Ideamart is Dialog Axiata's telco platform for **Sri Lanka**, covering the operators Dialog,
+Hutch (072 and 078) and Airtel. It exposes SMS, USSD, subscription management, mobile-account
+charging and location as JSON-over-HTTPS APIs.
 
 **Apply these instructions whenever the work involves Ideamart, IdeaPro, `api.ideamart.io`,
 `tel:` MSISDN addressing, USSD menus, shortcode/keyword routing, subscriber base size,
-direct carrier billing, or telco SMS in Sri Lanka or Cambodia.**
+direct carrier billing, or telco SMS in Sri Lanka.**
 
 ---
 
@@ -71,7 +71,7 @@ Base URL from `IDEAMART_BASE_URL` (production `https://api.ideamart.io`). LBS is
 | Subscription notification | *your callback URL* |
 | OTP request / verify | `POST /subscription/otp/request`, `/subscription/otp/verify` |
 | Charge a mobile account | `POST /caas/direct/debit` |
-| Query balance (SL only) | `POST /caas/balance/query` |
+| Query balance (needs provisioning) | `POST /caas/balance/query` |
 | Charging notification | *your callback URL* |
 | Locate a subscriber | `POST https://api.dialog.lk/lbs/locate` |
 | IVR / voice | Not publicly documented — do not invent endpoints |

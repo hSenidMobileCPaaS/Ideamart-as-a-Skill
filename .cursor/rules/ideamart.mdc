@@ -1,14 +1,17 @@
 ---
-description: Ideamart telco integration (SMS, USSD, Subscription, CaaS, LBS) — Dialog / Smart Axiata
+description: Ideamart telco integration (SMS, USSD, Subscription, CaaS, LBS) — Dialog Axiata, Sri Lanka
 globs:
 alwaysApply: false
 ---
 
 # Ideamart Integration
 
+Ideamart is Dialog Axiata's telco platform for **Sri Lanka** — operators Dialog, Hutch (072
+and 078) and Airtel.
+
 Applies when the work involves Ideamart, IdeaPro, `api.ideamart.io`, `tel:` MSISDN addressing,
 USSD menus, shortcode/keyword routing, subscriber base size, direct carrier billing, or telco
-SMS in Sri Lanka or Cambodia.
+SMS in Sri Lanka.
 
 Full specifications live in `references/`. Read the relevant file before writing code —
 parameter names and status codes are all documented there and must not be guessed.
@@ -47,7 +50,7 @@ POST /subscription/query-base      subscriber base size (returns a STRING)
 POST /subscription/otp/request     OTP dispatch — 60 min validity
 POST /subscription/otp/verify      3 attempts max; returns masked subscriberId
 POST /caas/direct/debit            charges REAL MONEY — idempotency required
-POST /caas/balance/query           Sri Lanka only, not available for Smart
+POST /caas/balance/query           requires "Enable Query Balance Requests" provisioning
 POST https://api.dialog.lk/lbs/locate   LBS (different host)
 ```
 

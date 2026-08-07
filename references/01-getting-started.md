@@ -2,18 +2,31 @@
 
 ## What Ideamart is
 
-Ideamart is Axiata's self-service telco platform. It lets an independent developer or company
-("service provider", SP) use carrier-grade capabilities — sending SMS, running USSD menus,
-managing subscriptions, charging a user's mobile account, locating a handset — through plain
-JSON-over-HTTPS APIs, without a direct operator integration.
+Ideamart is Dialog Axiata's self-service telco platform for **Sri Lanka**. It lets an
+independent developer or company ("service provider", SP) use carrier-grade capabilities —
+sending SMS, running USSD menus, managing subscriptions, charging a user's mobile account,
+locating a handset — through plain JSON-over-HTTPS APIs, without a direct operator
+integration.
 
-- **Sri Lanka:** <https://ideamart.io> — operators Dialog, Airtel, Hutch
-- **Cambodia:** <https://ideamart.com.kh> — operator Smart
-- **Docs:** <https://docs.ideamart.io>
 - **Portal:** <https://portal.ideamart.io>
+- **Docs:** <https://docs.ideamart.io>
+- **Site:** <https://ideamart.io>
 
-There is no fee to use the platform. The commercial model is revenue share on what the
-service earns (50:50 in Cambodia; operator-dependent in Sri Lanka).
+### Operators
+
+| Operator | Prefixes |
+|---|---|
+| Dialog | 070, 076, 077 |
+| Hutch | 072, 078 |
+| Airtel | 075 |
+
+You choose which operators to provision per API. An application provisioned for Dialog only
+cannot reach a Hutch or Airtel subscriber — so provision every operator whose subscribers you
+intend to serve, and expect per-operator differences in charging configuration.
+
+There is no fee to use the platform. The commercial model is revenue share on what the service
+earns; the split is operator-dependent and is paid to the bank account registered on your
+account.
 
 ## IdeaPro vs IdeaApp
 
@@ -50,7 +63,7 @@ The portal asks for things that must already exist. Get these ready first:
 
 ## Provisioning walkthrough (IdeaPro)
 
-Portal → select country → log in → **IdeaPro** → **Create new App**.
+Portal → log in → **IdeaPro** → **Create new App**.
 
 ### Basic details
 
@@ -83,11 +96,10 @@ For SMS you additionally configure:
   `KEYWORD <anything>` to the shortcode.
 - **MO enabled/disabled** — turn MO off if the service never receives user SMS.
 
-For CaaS you configure the **Charging Notification URL**, whether **Query Balance** is
-enabled (Sri Lanka only — not available for Smart), whether **subscription is required
-before charging**, and the operator-side **Enable Debit Requests** / **Mobile Account for
-Operator** toggles (both must be `YES` for charging to work). Max TPS and TPD are fixed per
-operator agreement.
+For CaaS you configure the **Charging Notification URL**, whether **Enable Query Balance
+Requests** is on, whether **subscription is required before charging**, and the operator-side
+**Enable Debit Requests** / **Mobile Account for Operator** toggles (both must be `YES` for
+charging to work). Max TPS and TPD are fixed per operator agreement.
 
 ## Approval states
 
@@ -156,8 +168,8 @@ More smoke tests: [scripts/smoke-test.sh](../scripts/smoke-test.sh).
 
 ## Support
 
-- Sri Lanka: `info@ideamart.io`, hotline 0773054056
-- Cambodia / Smart: `info@ideamart.com.kh`, hotline & WhatsApp 85510212122
+- Email: `info@ideamart.io`
+- Hotline: 0773054056
 
 When you contact support, quote the `requestId`, `externalTrxId` or `sessionId` and the
 `statusCode` — that is what they trace with.

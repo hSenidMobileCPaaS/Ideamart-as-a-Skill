@@ -1,8 +1,8 @@
 # Ideamart Integration — Copilot Instructions
 
-Ideamart is Axiata's telco platform (Dialog, Airtel, Hutch in Sri Lanka; Smart in Cambodia),
-exposing SMS, USSD, subscription management, mobile-account charging and location as
-JSON-over-HTTPS APIs.
+Ideamart is Dialog Axiata's telco platform for **Sri Lanka**, covering the operators Dialog,
+Hutch (072 and 078) and Airtel. It exposes SMS, USSD, subscription management, mobile-account
+charging and location as JSON-over-HTTPS APIs.
 
 Full specifications: [`AGENTS.md`](../AGENTS.md) and [`references/`](../references/).
 Working reference code: [`templates/typescript/`](../templates/typescript/).
@@ -39,7 +39,7 @@ Addresses are `tel:`-prefixed, no `+`, no spaces. `destinationAddresses` is alwa
 | Subscriber base size | `POST /subscription/query-base` |
 | OTP request / verify | `POST /subscription/otp/request` / `/verify` |
 | Charge | `POST /caas/direct/debit` |
-| Balance (SL only) | `POST /caas/balance/query` |
+| Balance (needs provisioning) | `POST /caas/balance/query` |
 | Locate | `POST https://api.dialog.lk/lbs/locate` |
 
 Callbacks (MO SMS, delivery report, USSD receive, subscription notification, charging

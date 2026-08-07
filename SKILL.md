@@ -1,13 +1,14 @@
 ---
 name: ideamart
-description: Build and integrate Ideamart (Dialog / Smart Axiata telco platform) services into any application — SMS, USSD, Subscription (register, unregister, status, query base size), OTP, CaaS charging (direct debit, balance query), and LBS. Use this whenever the user mentions Ideamart, IdeaPro, api.ideamart.io, MSISDN/`tel:` addressing, shortcode/keyword, USSD menus, subscriber base size, direct carrier billing, mobile-account charging, or telco SMS/USSD in Sri Lanka or Cambodia. Covers request/response contracts, callback (webhook) handlers, status codes, credential handling, and go-live requirements.
+description: Build and integrate Ideamart (Dialog Axiata's Sri Lankan telco platform) services into any application — SMS, USSD, Subscription (register, unregister, status, query base size), OTP, CaaS charging (direct debit, balance query), and LBS. Use this whenever the user mentions Ideamart, IdeaPro, api.ideamart.io, MSISDN/`tel:` addressing, shortcode/keyword, USSD menus, subscriber base size, direct carrier billing, mobile-account charging, or telco SMS/USSD in Sri Lanka. Covers request/response contracts, callback (webhook) handlers, status codes, credential handling, and go-live requirements.
 ---
 
 # Ideamart Integration Skill
 
-Ideamart is Axiata's telco service platform (Dialog, Airtel, Hutch in Sri Lanka; Smart in
-Cambodia). It exposes carrier capabilities — SMS, USSD, subscription lifecycle, mobile-account
-charging, location — as JSON-over-HTTPS APIs that any application can call.
+Ideamart is Dialog Axiata's telco service platform for **Sri Lanka**, covering the operators
+Dialog, Hutch (072 and 078) and Airtel. It exposes carrier capabilities — SMS, USSD,
+subscription lifecycle, mobile-account charging, location — as JSON-over-HTTPS APIs that any
+application can call.
 
 This skill makes you able to build a correct, production-shaped Ideamart integration from
 scratch, or add Ideamart to an existing product.
@@ -107,8 +108,7 @@ user requests production approval.
 | Voice / IVR | Not in public docs — see extension pattern | — | [06-lbs-ivr](references/06-lbs-ivr.md) |
 
 Base URL for everything except LBS: `https://api.ideamart.io`
-(alias `https://api.dialog.lk`; Cambodia/Smart service providers use their regional host).
-Always read it from `IDEAMART_BASE_URL` — never inline it.
+(alias `https://api.dialog.lk`). Always read it from `IDEAMART_BASE_URL` — never inline it.
 
 ---
 

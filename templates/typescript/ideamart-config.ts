@@ -92,7 +92,7 @@ export const config = {
   },
 
   caas: {
-    /** Sri Lanka only — not available for Smart (Cambodia). */
+    /** Mirrors the "Enable Query Balance Requests" CaaS provisioning toggle. */
     balanceQueryEnabled: boolEnv("IDEAMART_BALANCE_QUERY_ENABLED", true),
   },
 

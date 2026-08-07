@@ -456,8 +456,8 @@ export function debit(input: {
 }
 
 /**
- * Query chargeable balance. Sri Lanka only — unavailable for Smart (Cambodia),
- * so it is gated on config.
+ * Query chargeable balance. Requires the "Enable Query Balance Requests" CaaS
+ * provisioning toggle, so it is gated on config.
  *
  * Advisory only: the balance can change before the debit lands. Always handle
  * E1378 on the debit regardless of what this returned.
@@ -470,7 +470,7 @@ export function queryBalance(input: {
   if (!config.caas.balanceQueryEnabled) {
     throw new Error(
       "[ideamart] Balance query is disabled (IDEAMART_BALANCE_QUERY_ENABLED). " +
-        "It is not available for Smart/Cambodia."
+        "Enable it in your app's CaaS provisioning first."
     );
   }
   return post<BalanceQueryResponse>(config.endpoints.caasBalanceQuery, {

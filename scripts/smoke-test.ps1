@@ -117,7 +117,7 @@ Write-Host "-- CaaS ----------------------------------------"
 if ($env:IDEAMART_BALANCE_QUERY_ENABLED -ne "false") {
     Invoke-IdeamartCall "Query Balance" "$baseUrl/caas/balance/query" @{ subscriberId = "tel:$TestMsisdn"; currency = "LKR" }
 } else {
-    Skip-Test "Query Balance" "skipped (disabled - Smart/Cambodia)"
+    Skip-Test "Query Balance" "skipped (IDEAMART_BALANCE_QUERY_ENABLED=false)"
 }
 
 if ($WithCharge) {

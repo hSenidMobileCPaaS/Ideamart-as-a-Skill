@@ -2,8 +2,8 @@
 
 An agent skill that lets any AI coding assistant build correct
 [Ideamart](https://ideamart.io) integrations — SMS, USSD, Subscription, OTP, CaaS charging
-and LBS — on the Axiata telco platform (Dialog, Airtel, Hutch in Sri Lanka; Smart in
-Cambodia).
+and LBS — on Dialog Axiata's Sri Lankan telco platform, covering the operators **Dialog,
+Hutch (072 and 078) and Airtel**.
 
 Point your assistant at this repository and it stops guessing parameter names, stops treating
 HTTP 200 as success, stops hardcoding your application password, and starts producing
@@ -170,8 +170,8 @@ provisioned for.
 
 ## Support
 
-- **Sri Lanka** — `info@ideamart.io`, hotline 0773054056
-- **Cambodia / Smart** — `info@ideamart.com.kh`, hotline & WhatsApp 85510212122
+- Email — `info@ideamart.io`
+- Hotline — 0773054056
 
 Quote your `requestId` / `externalTrxId` / `sessionId` and the `statusCode` when you contact
 them — that is what they trace with.
@@ -179,8 +179,8 @@ them — that is what they trace with.
 ## Contributing
 
 Corrections welcome, especially: new endpoints, changed parameters, IVR specifications when
-published, and Cambodia/Smart differences. Cite the documentation page or the observed
-response for anything factual.
+published, and per-operator differences between Dialog, Hutch and Airtel. Cite the
+documentation page or the observed response for anything factual.
 
 ---
 
