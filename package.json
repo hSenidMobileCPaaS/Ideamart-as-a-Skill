@@ -19,13 +19,13 @@
     "claude-code",
     "cursor-rules"
   ],
-  "homepage": "https://github.com/OWNER/IdeamartSkillForAgents",
+  "homepage": "https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OWNER/IdeamartSkillForAgents.git"
+    "url": "git+https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill.git"
   },
   "bugs": {
-    "url": "https://github.com/OWNER/IdeamartSkillForAgents/issues"
+    "url": "https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill/issues"
   },
   "bin": {
     "ideamart": "./tools/ideamart.mjs"

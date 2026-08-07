@@ -148,6 +148,37 @@ test("brand logos are present as transparent PNGs", () => {
   }
 });
 
+const REPO = "hSenidMobileCPaaS/Ideamart-as-a-Skill";
+
+test("no placeholder repository URLs remain", () => {
+  const files = [
+    "README.md",
+    "docs/agent-support.md",
+    "package.json",
+    ".claude-plugin/plugin.json",
+    ".codex-plugin/plugin.json",
+    ".github/ISSUE_TEMPLATE/config.yml",
+  ];
+  for (const f of files) {
+    const content = read(f);
+    assert.doesNotMatch(content, /OWNER\//, `${f} still contains an OWNER/ placeholder`);
+    assert.doesNotMatch(content, /<repo-url>/, `${f} still contains a <repo-url> placeholder`);
+    assert.doesNotMatch(
+      content,
+      /IdeamartSkillForAgents/,
+      `${f} references the old repository name`
+    );
+  }
+});
+
+test("manifests point at the published repository", () => {
+  assert.equal(readJson("package.json").homepage, `https://github.com/${REPO}`);
+  assert.equal(readJson("package.json").repository.url, `git+https://github.com/${REPO}.git`);
+  assert.equal(readJson("package.json").bugs.url, `https://github.com/${REPO}/issues`);
+  assert.equal(readJson(".claude-plugin/plugin.json").homepage, `https://github.com/${REPO}`);
+  assert.equal(readJson(".codex-plugin/plugin.json").repository, `https://github.com/${REPO}`);
+});
+
 test("attribution names hSenid Mobile Solutions for Ideamart", () => {
   assert.match(read("LICENSE"), /hSenid Mobile Solutions \(Pvt\) Ltd/);
   assert.match(read("README.md"), /hSenid Mobile Solutions<\/strong> for <strong>Ideamart/);

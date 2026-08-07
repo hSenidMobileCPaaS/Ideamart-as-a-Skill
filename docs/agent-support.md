@@ -18,13 +18,13 @@ anywhere the agent can run a shell command, which is the practical floor for all
 
 | Agent | Tier | File it reads | Install |
 |---|---|---|---|
-| Claude Code | Plugin | `.claude-plugin/plugin.json`, `skills/`, `commands/` | `/plugin marketplace add OWNER/IdeamartSkillForAgents` |
+| Claude Code | Plugin | `.claude-plugin/plugin.json`, `skills/`, `commands/` | `/plugin marketplace add hSenidMobileCPaaS/Ideamart-as-a-Skill` |
 | Claude Agent SDK | Skills | `SKILL.md`, `skills/` | Point the SDK at the checkout |
-| Codex CLI / desktop | Plugin | `.codex-plugin/plugin.json`, `skills/` | `codex plugin marketplace add OWNER/IdeamartSkillForAgents` |
-| GitHub Copilot CLI | Plugin | `.claude-plugin/`, `.github/copilot-instructions.md` | `copilot plugin marketplace add OWNER/IdeamartSkillForAgents` |
-| Gemini CLI / Antigravity | Plugin | `gemini-extension.json` → `AGENTS.md` | `gemini extensions install <repo-url>` |
+| Codex CLI / desktop | Plugin | `.codex-plugin/plugin.json`, `skills/` | `codex plugin marketplace add hSenidMobileCPaaS/Ideamart-as-a-Skill` |
+| GitHub Copilot CLI | Plugin | `.claude-plugin/`, `.github/copilot-instructions.md` | `copilot plugin marketplace add hSenidMobileCPaaS/Ideamart-as-a-Skill` |
+| Gemini CLI / Antigravity | Plugin | `gemini-extension.json` → `AGENTS.md` | `gemini extensions install https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill` |
 | Qoder | Plugin | `.qoder-plugin/plugin.json`, `.qoder/rules/` | Copy `.qoder/rules/ideamart.md` |
-| Hermes Agent | Plugin | `plugin.yaml`, `skills/`, `commands/` | `hermes plugins install OWNER/IdeamartSkillForAgents` |
+| Hermes Agent | Plugin | `plugin.yaml`, `skills/`, `commands/` | `hermes plugins install hSenidMobileCPaaS/Ideamart-as-a-Skill` |
 | OpenCode | Context | `opencode.json` → `AGENTS.md` | Auto-loads `AGENTS.md` from the project root |
 | Cursor | Rules | `.cursor/rules/ideamart.mdc` | Copy into your project's `.cursor/rules/` |
 | Windsurf | Rules | `.windsurf/rules/ideamart.md` | Copy into your project's `.windsurf/rules/` |

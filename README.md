@@ -13,12 +13,13 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-0F766E?style=flat-square" alt="MIT license">
-  <img src="https://img.shields.io/badge/endpoints-14-0F766E?style=flat-square" alt="14 endpoints">
-  <img src="https://img.shields.io/badge/callbacks-5-0F766E?style=flat-square" alt="5 callbacks">
-  <img src="https://img.shields.io/badge/status%20codes-80%2B-0F766E?style=flat-square" alt="80+ status codes">
-  <img src="https://img.shields.io/badge/works%20with-20%2B%20agents-0F766E?style=flat-square" alt="Works with 20+ agents">
-  <img src="https://img.shields.io/badge/dependencies-0-0F766E?style=flat-square" alt="Zero dependencies">
+  <a href="https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/hSenidMobileCPaaS/Ideamart-as-a-Skill/ci.yml?branch=main&style=flat-square&label=CI&color=E11D74" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/hSenidMobileCPaaS/Ideamart-as-a-Skill?style=flat-square&color=E11D74" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/endpoints-14-E11D74?style=flat-square" alt="14 endpoints">
+  <img src="https://img.shields.io/badge/callbacks-5-E11D74?style=flat-square" alt="5 callbacks">
+  <img src="https://img.shields.io/badge/status%20codes-80%2B-E11D74?style=flat-square" alt="80+ status codes">
+  <img src="https://img.shields.io/badge/works%20with-20%2B%20agents-E11D74?style=flat-square" alt="Works with 20+ agents">
+  <img src="https://img.shields.io/badge/dependencies-0-E11D74?style=flat-square" alt="Zero dependencies">
 </p>
 
 <p align="center">
@@ -49,7 +50,7 @@ Pick your agent. Everything below is the same content behind a different filenam
 <summary><strong>Claude Code</strong></summary>
 
 ```
-/plugin marketplace add OWNER/IdeamartSkillForAgents
+/plugin marketplace add hSenidMobileCPaaS/Ideamart-as-a-Skill
 ```
 ```
 /plugin install ideamart@ideamart
@@ -58,7 +59,7 @@ Pick your agent. Everything below is the same content behind a different filenam
 Or clone it as a skill directly:
 
 ```bash
-git clone https://github.com/OWNER/IdeamartSkillForAgents ~/.claude/skills/ideamart
+git clone https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill ~/.claude/skills/ideamart
 ```
 </details>
 
@@ -66,7 +67,7 @@ git clone https://github.com/OWNER/IdeamartSkillForAgents ~/.claude/skills/ideam
 <summary><strong>Cursor</strong></summary>
 
 ```bash
-git clone https://github.com/OWNER/IdeamartSkillForAgents .ideamart
+git clone https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill .ideamart
 cp .ideamart/.cursor/rules/ideamart.mdc .cursor/rules/
 ```
 </details>
@@ -75,7 +76,7 @@ cp .ideamart/.cursor/rules/ideamart.mdc .cursor/rules/
 <summary><strong>Codex</strong></summary>
 
 ```bash
-codex plugin marketplace add OWNER/IdeamartSkillForAgents
+codex plugin marketplace add hSenidMobileCPaaS/Ideamart-as-a-Skill
 codex plugin add ideamart@ideamart
 ```
 </details>
@@ -86,7 +87,7 @@ codex plugin add ideamart@ideamart
 CLI:
 
 ```bash
-copilot plugin marketplace add OWNER/IdeamartSkillForAgents
+copilot plugin marketplace add hSenidMobileCPaaS/Ideamart-as-a-Skill
 ```
 
 Editor extension — copy the instructions file:
@@ -100,7 +101,7 @@ cp .ideamart/.github/copilot-instructions.md .github/
 <summary><strong>Gemini CLI / Antigravity</strong></summary>
 
 ```bash
-gemini extensions install https://github.com/OWNER/IdeamartSkillForAgents
+gemini extensions install https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill
 ```
 </details>
 
@@ -108,7 +109,7 @@ gemini extensions install https://github.com/OWNER/IdeamartSkillForAgents
 <summary><strong>Windsurf · Cline · Kiro · Qoder</strong></summary>
 
 ```bash
-git clone https://github.com/OWNER/IdeamartSkillForAgents .ideamart
+git clone https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill .ideamart
 cp .ideamart/.windsurf/rules/ideamart.md  .windsurf/rules/     # Windsurf
 cp .ideamart/.clinerules/ideamart.md      .clinerules/         # Cline
 cp .ideamart/.kiro/steering/ideamart.md   .kiro/steering/      # Kiro
@@ -120,7 +121,7 @@ cp .ideamart/.qoder/rules/ideamart.md     .qoder/rules/        # Qoder
 <summary><strong>Aider · Zed · Amp · Jules · Junie · OpenCode · anything reading AGENTS.md</strong></summary>
 
 ```bash
-git clone https://github.com/OWNER/IdeamartSkillForAgents .ideamart
+git clone https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill .ideamart
 ```
 
 Then reference `.ideamart/AGENTS.md` from your own `AGENTS.md`, or copy it to the project root.
@@ -132,7 +133,7 @@ Then reference `.ideamart/AGENTS.md` from your own `AGENTS.md`, or copy it to th
 Paste the raw URL and ask it to read the file:
 
 ```
-https://raw.githubusercontent.com/OWNER/IdeamartSkillForAgents/main/AGENTS.md
+https://raw.githubusercontent.com/hSenidMobileCPaaS/Ideamart-as-a-Skill/main/AGENTS.md
 ```
 </details>
 
