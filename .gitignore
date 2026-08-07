@@ -1,0 +1,20 @@
+# Secrets — never commit. .env.example is the only env file that belongs in git.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencies / build
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

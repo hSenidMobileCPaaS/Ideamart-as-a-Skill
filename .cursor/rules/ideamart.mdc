@@ -1,0 +1,81 @@
+---
+description: Ideamart telco integration (SMS, USSD, Subscription, CaaS, LBS) — Dialog / Smart Axiata
+globs:
+alwaysApply: false
+---
+
+# Ideamart Integration
+
+Applies when the work involves Ideamart, IdeaPro, `api.ideamart.io`, `tel:` MSISDN addressing,
+USSD menus, shortcode/keyword routing, subscriber base size, direct carrier billing, or telco
+SMS in Sri Lanka or Cambodia.
+
+Full specifications live in `references/`. Read the relevant file before writing code —
+parameter names and status codes are all documented there and must not be guessed.
+
+## Non-negotiable
+
+1. `applicationId` / `password` come from environment variables only, through one config
+   module, validated at startup. Never hardcoded, never in a client bundle, never logged,
+   never committed.
+2. Ideamart is called from the backend only. Clients call your API; your API calls Ideamart.
+3. Consent is recorded before any Register or charge, and the amount and frequency are
+   disclosed first.
+4. `subscriberId` is opaque — it may be a masked hash, not a phone number.
+5. Charging is idempotent: one `externalTrxId` per logical charge, persisted before the call,
+   reused on retry. Never re-roll it.
+
+## Request/response shape
+
+Every endpoint: `POST` JSON with `applicationId` + `password` + service fields.
+Every response: HTTP 200 with `statusCode` / `statusDetail`.
+
+**HTTP 200 does not mean success.** Branch on `statusCode`. `S1000` is success.
+
+Build one `post()` helper that injects credentials; every service is a thin wrapper.
+
+Addresses are always `tel:`-prefixed with no `+` and no spaces. Normalise in one helper.
+
+## Endpoints
+
+```
+POST /sms/send                     MT SMS ("destinationAddresses" is an ARRAY)
+POST /ussd/send                    USSD screen (mt-init / mt-cont / mt-fin)
+POST /subscription/send            action "1" = register, "0" = unregister
+POST /subscription/getStatus       one subscriber's status
+POST /subscription/query-base      subscriber base size (returns a STRING)
+POST /subscription/otp/request     OTP dispatch — 60 min validity
+POST /subscription/otp/verify      3 attempts max; returns masked subscriberId
+POST /caas/direct/debit            charges REAL MONEY — idempotency required
+POST /caas/balance/query           Sri Lanka only, not available for Smart
+POST https://api.dialog.lk/lbs/locate   LBS (different host)
+```
+
+Inbound callbacks (MO SMS, delivery report, USSD receive, subscription notification, charging
+notification) must return `{"statusCode":"S1000","statusDetail":"Success"}` — always HTTP 200,
+acknowledge before doing work, validate the schema, verify `applicationId`, deduplicate.
+
+## Codes that look like errors but are success
+
+- `E1351` "already registered" on Register
+- `E1356` "not registered" on Unregister
+- `E1379` "transaction already completed" on debit retry
+
+## Codes that mean the integration is down, not the request
+
+- `E1303` — calling IP not whitelisted (`curl -4 https://myip.ideamart.io` on the server)
+- `E1313` — bad credentials or inactive app
+- `E1309` — that API was not provisioned
+
+## Never
+
+- Check only the HTTP status
+- Send `destinationAddresses` as a bare string
+- Generate your own USSD `sessionId` — echo the platform's
+- End a USSD flow with `mt-cont` — use `mt-fin`
+- Keep USSD sessions in an in-process `Map` in production
+- Do work before acknowledging a callback
+- Ship `rejectUnauthorized: false` — supply the intermediate CA instead
+- Prefix an Ideamart env var with `NEXT_PUBLIC_` / `VITE_` / `REACT_APP_`
+- Log the password, OTP, `referenceNo`, or an unmasked `subscriberId`
+- Invent IVR endpoints — there is no public specification
