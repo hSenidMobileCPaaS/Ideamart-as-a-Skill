@@ -31,6 +31,34 @@ direct carrier billing, or telco SMS in Sri Lanka.**
 
 ---
 
+## Query the API catalog instead of guessing
+
+This repo ships the complete Ideamart contract as structured data
+([`catalog/ideamart-api.json`](catalog/ideamart-api.json)) plus a zero-dependency CLI over it.
+**Run these instead of recalling parameter names** — they are offline, read-only, need no
+install, and never see credentials.
+
+```bash
+node tools/ideamart.mjs list [category]              # every service and callback
+node tools/ideamart.mjs show <id>                    # full contract: params, response, rules
+node tools/ideamart.mjs search "<query>"             # find by intent, e.g. "base size"
+node tools/ideamart.mjs curl <id> [key=value ...]    # build a valid, runnable request
+node tools/ideamart.mjs validate <id> '<json>'       # check a payload against the spec
+node tools/ideamart.mjs code <statusCode>            # decode a status code + the fix
+node tools/ideamart.mjs diagnose "<symptom>"         # cause and fix from a symptom
+node tools/ideamart.mjs practices [severity]         # security and reliability rules
+node tools/ideamart.mjs checklist                    # go-live checklist
+node tools/ideamart.mjs reference <doc>              # print a reference document
+node tools/ideamart.mjs platform                     # base URLs, operators, conventions
+```
+
+Add `--json` to any command for machine-readable output. If you cannot run commands, read
+`catalog/ideamart-api.json` directly — it contains the same data.
+
+**Use them in this order:** `search` or `list` to find the service → `show` for the exact
+contract → write the code → `validate` the payload you generated → `code`/`diagnose` when
+something fails.
+
 ## Read before writing code
 
 | Task | File |

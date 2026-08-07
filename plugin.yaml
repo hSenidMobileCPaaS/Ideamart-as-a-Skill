@@ -1,0 +1,20 @@
+name: ideamart
+version: 1.0.0
+description: Ideamart telco integration for AI agents — always-on context, bundled skills, and slash commands.
+license: MIT
+provides_skills:
+  - ideamart
+  - ideamart-scaffold
+  - ideamart-review
+  - ideamart-callbacks
+  - ideamart-debug
+  - ideamart-golive
+  - ideamart-help
+provides_commands:
+  - ideamart
+  - ideamart-scaffold
+  - ideamart-review
+  - ideamart-callbacks
+  - ideamart-debug
+  - ideamart-golive
+  - ideamart-help

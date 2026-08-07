@@ -44,6 +44,33 @@ or real money. Apply them without being asked.
 
 ---
 
+## Query the contract, do not recall it
+
+The complete Ideamart contract ships as structured data
+([`catalog/ideamart-api.json`](catalog/ideamart-api.json)) with a zero-dependency CLI over it.
+Run it instead of reconstructing parameter names from memory — it is offline, read-only, needs
+no install, and never sees credentials.
+
+```bash
+node tools/ideamart.mjs list [category]              # every service and callback
+node tools/ideamart.mjs show <id>                    # full contract: params, response, rules
+node tools/ideamart.mjs search "<query>"             # find by intent, e.g. "base size"
+node tools/ideamart.mjs curl <id> [key=value ...]    # build a valid, runnable request
+node tools/ideamart.mjs validate <id> '<json>'       # check a payload against the spec
+node tools/ideamart.mjs code <statusCode>            # decode a status code + the fix
+node tools/ideamart.mjs diagnose "<symptom>"         # cause and fix from a symptom
+node tools/ideamart.mjs practices [severity]         # security and reliability rules
+node tools/ideamart.mjs checklist                    # go-live checklist
+node tools/ideamart.mjs reference <doc>              # print a reference document
+node tools/ideamart.mjs platform                     # base URLs, operators, conventions
+```
+
+`--json` on any command for machine-readable output. If you cannot run commands, read
+`catalog/ideamart-api.json` directly — same data.
+
+**Working order:** `search`/`list` to find the service → `show` for the exact contract → write
+the code → `validate` the payload you generated → `code`/`diagnose` when something fails.
+
 ## How to approach an Ideamart task
 
 **Step 1 — Establish what already exists.** Ask (or check the code for) which of these the

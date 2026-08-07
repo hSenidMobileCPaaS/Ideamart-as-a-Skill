@@ -1,84 +1,178 @@
 ---
-description: Ideamart telco integration (SMS, USSD, Subscription, CaaS, LBS) — Dialog Axiata, Sri Lanka
+description: Ideamart telco integration (SMS, USSD, Subscription, OTP, CaaS, LBS) — Dialog Axiata, Sri Lanka
 globs:
 alwaysApply: false
 ---
+<!-- Generated from AGENTS.md by scripts/sync-rules.mjs. Do not edit directly. -->
 
-# Ideamart Integration
+# Ideamart Integration — Agent Instructions
 
-Ideamart is Dialog Axiata's telco platform for **Sri Lanka** — operators Dialog, Hutch (072
-and 078) and Airtel.
+> Portable entry point for Cursor, Windsurf, GitHub Copilot, Codex, Cline, Aider, Zed and any
+> other agent that reads `AGENTS.md`. Claude Code and the Agent SDK use [SKILL.md](SKILL.md) —
+> same content, skill frontmatter.
 
-Applies when the work involves Ideamart, IdeaPro, `api.ideamart.io`, `tel:` MSISDN addressing,
-USSD menus, shortcode/keyword routing, subscriber base size, direct carrier billing, or telco
-SMS in Sri Lanka.
+Ideamart is Dialog Axiata's telco platform for **Sri Lanka**, covering the operators Dialog,
+Hutch (072 and 078) and Airtel. It exposes SMS, USSD, subscription management, mobile-account
+charging and location as JSON-over-HTTPS APIs.
 
-Full specifications live in `references/`. Read the relevant file before writing code —
-parameter names and status codes are all documented there and must not be guessed.
+**Apply these instructions whenever the work involves Ideamart, IdeaPro, `api.ideamart.io`,
+`tel:` MSISDN addressing, USSD menus, shortcode/keyword routing, subscriber base size,
+direct carrier billing, or telco SMS in Sri Lanka.**
 
-## Non-negotiable
+---
 
-1. `applicationId` / `password` come from environment variables only, through one config
-   module, validated at startup. Never hardcoded, never in a client bundle, never logged,
-   never committed.
-2. Ideamart is called from the backend only. Clients call your API; your API calls Ideamart.
-3. Consent is recorded before any Register or charge, and the amount and frequency are
-   disclosed first.
-4. `subscriberId` is opaque — it may be a masked hash, not a phone number.
-5. Charging is idempotent: one `externalTrxId` per logical charge, persisted before the call,
-   reused on retry. Never re-roll it.
+## Non-negotiable rules
 
-## Request/response shape
+1. **Never hardcode `applicationId` or `password`.** Environment variables only, read through
+   one config module, validated at startup. Not in source, not in a client bundle, not in a
+   committed file, not in a log, not in git history.
+2. **Never call Ideamart from client-side code.** Browsers and mobile apps call *your*
+   backend; your backend calls Ideamart. The credentials are a shared secret and the platform
+   enforces IP whitelisting.
+3. **Never subscribe or charge without explicit, recorded consent**, and never without
+   disclosing amount and frequency first. Ideamart suspends applications over this.
+4. **Never assume `subscriberId` is a real phone number.** With masking enabled it is an
+   opaque hash. Store and send back exactly what you received.
+5. **Always make charging idempotent.** One `externalTrxId` per logical charge, persisted
+   *before* the call. Never retry with a fresh one — that double-charges a real person.
 
-Every endpoint: `POST` JSON with `applicationId` + `password` + service fields.
-Every response: HTTP 200 with `statusCode` / `statusDetail`.
+---
 
-**HTTP 200 does not mean success.** Branch on `statusCode`. `S1000` is success.
+## Query the API catalog instead of guessing
 
-Build one `post()` helper that injects credentials; every service is a thin wrapper.
+This repo ships the complete Ideamart contract as structured data
+([`catalog/ideamart-api.json`](catalog/ideamart-api.json)) plus a zero-dependency CLI over it.
+**Run these instead of recalling parameter names** — they are offline, read-only, need no
+install, and never see credentials.
 
-Addresses are always `tel:`-prefixed with no `+` and no spaces. Normalise in one helper.
+```bash
+node tools/ideamart.mjs list [category]              # every service and callback
+node tools/ideamart.mjs show <id>                    # full contract: params, response, rules
+node tools/ideamart.mjs search "<query>"             # find by intent, e.g. "base size"
+node tools/ideamart.mjs curl <id> [key=value ...]    # build a valid, runnable request
+node tools/ideamart.mjs validate <id> '<json>'       # check a payload against the spec
+node tools/ideamart.mjs code <statusCode>            # decode a status code + the fix
+node tools/ideamart.mjs diagnose "<symptom>"         # cause and fix from a symptom
+node tools/ideamart.mjs practices [severity]         # security and reliability rules
+node tools/ideamart.mjs checklist                    # go-live checklist
+node tools/ideamart.mjs reference <doc>              # print a reference document
+node tools/ideamart.mjs platform                     # base URLs, operators, conventions
+```
 
-## Endpoints
+Add `--json` to any command for machine-readable output. If you cannot run commands, read
+`catalog/ideamart-api.json` directly — it contains the same data.
+
+**Use them in this order:** `search` or `list` to find the service → `show` for the exact
+contract → write the code → `validate` the payload you generated → `code`/`diagnose` when
+something fails.
+
+## Read before writing code
+
+| Task | File |
+|---|---|
+| Account, provisioning, credentials, first call | [references/01-getting-started.md](references/01-getting-started.md) |
+| Send / receive SMS, delivery reports | [references/02-sms.md](references/02-sms.md) |
+| USSD sessions and menus | [references/03-ussd.md](references/03-ussd.md) |
+| Register, **unregister**, status, **base size**, OTP | [references/04-subscription.md](references/04-subscription.md) |
+| Charging: direct debit, balance query | [references/05-caas.md](references/05-caas.md) |
+| LBS location; IVR extension pattern | [references/06-lbs-ivr.md](references/06-lbs-ivr.md) |
+| Inbound webhooks | [references/07-callbacks.md](references/07-callbacks.md) |
+| Status codes and error handling | [references/08-status-codes.md](references/08-status-codes.md) |
+| Secrets, TLS, PII, consent | [references/09-security-best-practices.md](references/09-security-best-practices.md) |
+| Go-live checklist | [references/10-production-checklist.md](references/10-production-checklist.md) |
+
+Working reference implementations in [templates/typescript/](templates/typescript/). Port them
+to the project's stack rather than inventing a different structure.
+
+---
+
+## Service map
+
+Base URL from `IDEAMART_BASE_URL` (production `https://api.ideamart.io`). LBS is on
+`https://api.dialog.lk/lbs/locate`.
+
+| Need | Endpoint |
+|---|---|
+| Send SMS (MT) | `POST /sms/send` |
+| Broadcast to base | `POST /sms/send` with `destinationAddresses: ["tel:all"]` |
+| Receive SMS (MO) | *your callback URL* |
+| Delivery report | *your callback URL* |
+| USSD screen out | `POST /ussd/send` |
+| USSD input in | *your callback URL* |
+| Register (opt-in) | `POST /subscription/send` with `action: "1"` |
+| **Unregister (opt-out)** | `POST /subscription/send` with `action: "0"` |
+| Subscription status | `POST /subscription/getStatus` |
+| **Subscriber base size** | `POST /subscription/query-base` |
+| Subscription notification | *your callback URL* |
+| OTP request / verify | `POST /subscription/otp/request`, `/subscription/otp/verify` |
+| Charge a mobile account | `POST /caas/direct/debit` |
+| Query balance (needs provisioning) | `POST /caas/balance/query` |
+| Charging notification | *your callback URL* |
+| Locate a subscriber | `POST https://api.dialog.lk/lbs/locate` |
+| IVR / voice | Not publicly documented — do not invent endpoints |
+
+---
+
+## The universal request/response shape
 
 ```
-POST /sms/send                     MT SMS ("destinationAddresses" is an ARRAY)
-POST /ussd/send                    USSD screen (mt-init / mt-cont / mt-fin)
-POST /subscription/send            action "1" = register, "0" = unregister
-POST /subscription/getStatus       one subscriber's status
-POST /subscription/query-base      subscriber base size (returns a STRING)
-POST /subscription/otp/request     OTP dispatch — 60 min validity
-POST /subscription/otp/verify      3 attempts max; returns masked subscriberId
-POST /caas/direct/debit            charges REAL MONEY — idempotency required
-POST /caas/balance/query           requires "Enable Query Balance Requests" provisioning
-POST https://api.dialog.lk/lbs/locate   LBS (different host)
+POST {baseUrl}/{path}
+Content-Type: application/json
+
+{ "applicationId": "APP_001807", "password": "…", "version": "1.0", …fields… }
 ```
 
-Inbound callbacks (MO SMS, delivery report, USSD receive, subscription notification, charging
-notification) must return `{"statusCode":"S1000","statusDetail":"Success"}` — always HTTP 200,
-acknowledge before doing work, validate the schema, verify `applicationId`, deduplicate.
+```json
+{ "statusCode": "S1000", "statusDetail": "Success", "version": "1.0" }
+```
 
-## Codes that look like errors but are success
+So: **one `post()` helper that injects credentials, plus thin typed wrappers per service.**
+Do not write bespoke fetch calls per endpoint.
 
-- `E1351` "already registered" on Register
-- `E1356` "not registered" on Unregister
-- `E1379` "transaction already completed" on debit retry
+**Addressing** — always `tel:`-prefixed, no `+`, no spaces:
 
-## Codes that mean the integration is down, not the request
+```
+tel:94771234567          plain MSISDN
+tel:hu3b84346f…          hash key (masking enabled) — opaque
+tel:all                  broadcast (SMS only — guard this)
+```
 
-- `E1303` — calling IP not whitelisted (`curl -4 https://myip.ideamart.io` on the server)
-- `E1313` — bad credentials or inactive app
-- `E1309` — that API was not provisioned
+Normalise in one helper. Never concatenate `tel:` inline.
 
-## Never
+---
 
-- Check only the HTTP status
-- Send `destinationAddresses` as a bare string
-- Generate your own USSD `sessionId` — echo the platform's
-- End a USSD flow with `mt-cont` — use `mt-fin`
-- Keep USSD sessions in an in-process `Map` in production
-- Do work before acknowledging a callback
-- Ship `rejectUnauthorized: false` — supply the intermediate CA instead
-- Prefix an Ideamart env var with `NEXT_PUBLIC_` / `VITE_` / `REACT_APP_`
-- Log the password, OTP, `referenceNo`, or an unmasked `subscriberId`
-- Invent IVR endpoints — there is no public specification
+## Mistakes to avoid
+
+- ❌ Checking `res.ok` / HTTP 200 as success — **Ideamart returns 200 for errors.** Branch on
+  `statusCode`.
+- ❌ `destinationAddresses: "tel:94…"` — it is always an **array**.
+- ❌ Treating `E1351` (already registered) as a failure on Register — it is success.
+- ❌ Treating `E1356` (not registered) as a failure on Unregister — it is success.
+- ❌ Treating `E1379` (already completed) as a failure on debit — it is success.
+- ❌ Retrying a debit with a new `externalTrxId` after a timeout — double charge.
+- ❌ Generating your own USSD `sessionId` — echo the platform's.
+- ❌ Ending a USSD flow with `mt-cont` — terminal screens use `mt-fin`.
+- ❌ An in-memory USSD session `Map` in production — breaks across instances.
+- ❌ Doing work before acknowledging a callback — sessions time out in seconds.
+- ❌ `rejectUnauthorized: false` in shipped code — supply the intermediate CA instead.
+- ❌ `NEXT_PUBLIC_` / `VITE_` / `REACT_APP_` on any Ideamart variable — that ships the
+  password to the browser.
+- ❌ Logging `password`, the OTP, `referenceNo`, or an unmasked `subscriberId`.
+- ❌ Inventing IVR endpoints — there is no public specification.
+
+---
+
+## When you generate code, always
+
+- Put credentials in `.env` (git-ignored) with a placeholder-only `.env.example`.
+- Validate config at startup and fail loudly on missing variables.
+- Set an explicit timeout on every call.
+- Branch on `statusCode` and map codes to behaviour classes (configuration / client /
+  user-state / transient).
+- Retry only transient codes and transport errors, with backoff — never a debit with a new ID.
+- Make callback handlers acknowledge first, validate the schema, verify `applicationId`, and
+  deduplicate.
+- Log `requestId` / `sessionId` / `externalTrxId` / `statusCode`; mask subscriber addresses.
+- Mirror subscription state locally from notifications instead of polling `getStatus`.
+- Use a decimal type for money.
+- Match the host project's existing stack, structure and conventions.

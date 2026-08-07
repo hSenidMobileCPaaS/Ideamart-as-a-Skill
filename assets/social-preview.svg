@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img"
+     aria-label="Ideamart Skill for Agents — SMS, USSD, Subscription, OTP, CaaS and LBS integrations your AI agent gets right the first time.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="55%" stop-color="#0F2A2A"/>
+      <stop offset="100%" stop-color="#0F766E"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2DD4BF"/>
+      <stop offset="100%" stop-color="#0D9488"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- subtle grid -->
+  <g stroke="#ffffff" stroke-width="1" opacity="0.045">
+    <path d="M0 160h1280M0 320h1280M0 480h1280M320 0v640M640 0v640M960 0v640"/>
+  </g>
+
+  <!-- logo mark -->
+  <g transform="translate(96,232) scale(0.72)">
+    <rect x="0" y="0" width="224" height="224" rx="52" fill="url(#mark)"/>
+    <path d="M54 68h116a16 16 0 0 1 16 16v58a16 16 0 0 1-16 16h-52l-30 26v-26H54a16 16 0 0 1-16-16V84a16 16 0 0 1 16-16z"
+          fill="#0B1220" opacity="0.92"/>
+    <g fill="none" stroke="#2DD4BF" stroke-width="9" stroke-linecap="round">
+      <path d="M88 122a28 28 0 0 1 48 0"/>
+      <path d="M70 134a50 50 0 0 1 84 0"/>
+    </g>
+    <circle cx="112" cy="138" r="9" fill="#2DD4BF"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="290" y="266" font="700 62px ui-sans-serif, system-ui, sans-serif"
+        font-family="ui-sans-serif, system-ui, sans-serif" font-size="62" font-weight="700" fill="#F8FAFC">
+    Ideamart Skill for Agents
+  </text>
+  <text x="292" y="316" font-family="ui-sans-serif, system-ui, sans-serif" font-size="26" fill="#5EEAD4">
+    SMS · USSD · Subscription · OTP · CaaS · LBS
+  </text>
+  <text x="292" y="362" font-family="ui-sans-serif, system-ui, sans-serif" font-size="23" fill="#94A3B8">
+    Telco integrations your AI agent gets right the first time.
+  </text>
+
+  <!-- chips -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="19">
+    <rect x="292" y="404" width="238" height="44" rx="22" fill="#ffffff" opacity="0.08"/>
+    <text x="316" y="432" fill="#E2E8F0">14 endpoints</text>
+
+    <rect x="546" y="404" width="230" height="44" rx="22" fill="#ffffff" opacity="0.08"/>
+    <text x="570" y="432" fill="#E2E8F0">5 callbacks</text>
+
+    <rect x="792" y="404" width="266" height="44" rx="22" fill="#ffffff" opacity="0.08"/>
+    <text x="816" y="432" fill="#E2E8F0">80+ status codes</text>
+  </g>
+
+  <text x="292" y="508" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" fill="#64748B">
+    Dialog Axiata · Sri Lanka · Dialog, Hutch, Airtel
+  </text>
+</svg>

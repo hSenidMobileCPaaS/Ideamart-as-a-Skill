@@ -1,0 +1,2 @@
+description = "Implement or fix Ideamart inbound webhooks"
+prompt = "Work on Ideamart callbacks: {{args}}. Run `node tools/ideamart.mjs list --direction=inbound` and `node tools/ideamart.mjs show <id>` for each. Every handler must return HTTP 200 with {\"statusCode\":\"S1000\",\"statusDetail\":\"Success\"}, acknowledge before doing work, deduplicate on the documented key, validate the schema, and verify applicationId. Test with ./scripts/test-callbacks.sh."

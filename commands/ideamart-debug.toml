@@ -1,0 +1,2 @@
+description = "Diagnose a failing Ideamart call or callback"
+prompt = "Diagnose this Ideamart problem: {{args}}. Run `node tools/ideamart.mjs diagnose` with the symptom, and `node tools/ideamart.mjs code <statusCode>` if there is a code. Remember Ideamart returns HTTP 200 for failures, so first confirm the code is reading statusCode at all. Give the most likely cause and the specific fix."

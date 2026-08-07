@@ -1,0 +1,672 @@
+{
+  "$schema": "./ideamart-api.schema.json",
+  "catalogVersion": "1.0.0",
+  "source": "https://docs.ideamart.io",
+  "platform": {
+    "name": "Ideamart",
+    "operator": "Dialog Axiata",
+    "market": "Sri Lanka",
+    "portal": "https://portal.ideamart.io",
+    "docs": "https://docs.ideamart.io",
+    "support": { "email": "info@ideamart.io", "whatsapp": "+94767412345" }
+  },
+  "operators": [
+    { "name": "Dialog", "prefixes": ["070", "076", "077"] },
+    { "name": "Hutch", "prefixes": ["072", "078"] },
+    { "name": "Airtel", "prefixes": ["075"] }
+  ],
+  "baseUrls": {
+    "primary": "https://api.ideamart.io",
+    "alias": "https://api.dialog.lk",
+    "lbs": "https://api.dialog.lk/lbs/locate",
+    "myIp": "https://myip.ideamart.io",
+    "envVar": "IDEAMART_BASE_URL"
+  },
+  "conventions": {
+    "method": "POST",
+    "contentType": "application/json",
+    "auth": {
+      "type": "body-credentials",
+      "fields": ["applicationId", "password"],
+      "note": "Every outbound request carries applicationId and password in the JSON body. There are no headers, tokens or signatures."
+    },
+    "addressing": {
+      "format": "tel:<msisdn>",
+      "rules": [
+        "Always tel:-prefixed, no + and no spaces.",
+        "May be a masked hash (tel:hu3b84346f...) when number masking is provisioned. Treat as opaque.",
+        "tel:all broadcasts to the entire subscribed base (SMS send only)."
+      ]
+    },
+    "responseEnvelope": {
+      "always": ["statusCode", "statusDetail"],
+      "common": ["version", "requestId"],
+      "criticalNote": "Ideamart returns HTTP 200 for application-level failures. Branch on statusCode, never on the HTTP status alone. S1000 is success."
+    },
+    "callbackAck": { "statusCode": "S1000", "statusDetail": "Success" }
+  },
+
+  "services": [
+    {
+      "id": "sms-send",
+      "name": "SMS Send",
+      "category": "sms",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/sms/send",
+      "summary": "Send an MT (Mobile Terminated) SMS to one or more subscribers.",
+      "reference": "references/02-sms.md",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID as given when provisioned." },
+        { "name": "password", "type": "string", "required": true, "description": "Password given when provisioned." },
+        { "name": "version", "type": "string", "required": false, "description": "API version (1.0, 2.0). Defaults to latest." },
+        { "name": "destinationAddresses", "type": "string[]", "required": true, "description": "Array of tel:-prefixed addresses. Always an array, even for one recipient. tel:all targets the whole subscribed base." },
+        { "name": "message", "type": "string", "required": true, "description": "Message body. Over-length messages are split by the platform and charged per part." },
+        { "name": "sourceAddress", "type": "string", "required": false, "description": "Sender address shown to the user. Must be a provisioned alias or the send fails with E1331." },
+        { "name": "deliveryStatusRequest", "type": "enum", "required": false, "enum": ["0", "1"], "description": "0 = no delivery report, 1 = request one. Defaults to 0." },
+        { "name": "encoding", "type": "enum", "required": false, "enum": ["0", "240", "245"], "description": "0 = Text, 240 = Flash SMS, 245 = Binary (message hex-encoded). Defaults to Text." },
+        { "name": "chargingAmount", "type": "string", "required": false, "description": "Charging amount for variable-charge SMS services." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "messageId", "type": "string", "description": "Platform message identifier." },
+        { "name": "version", "type": "string", "description": "API version." },
+        { "name": "destinationResponses", "type": "object[]", "description": "Per-recipient results (address, messageId, statusDetail, timeStamp). A multi-recipient send can partially succeed." }
+      ],
+      "sampleRequest": { "message": "Hello", "destinationAddresses": ["tel:94771234567"], "password": "…", "applicationId": "APP_999999" },
+      "sampleResponse": { "statusCode": "S1000", "statusDetail": "Success", "messageId": "MSG_000111", "version": "1.0" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1309", "E1311", "E1322", "E1323", "E1325", "E1331", "E1332", "E1333", "E1334", "E1335", "E1341", "E1384"],
+      "rules": [
+        "destinationAddresses is always an array.",
+        "Guard tel:all behind a deliberate, separately-authorised code path.",
+        "Keep under 160 GSM-7 characters for one part; Sinhala and Tamil are UCS-2, so budget 70.",
+        "Only set deliveryStatusRequest to 1 if you consume the delivery-report callback."
+      ]
+    },
+    {
+      "id": "ussd-send",
+      "name": "USSD Send",
+      "category": "ussd",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/ussd/send",
+      "summary": "Send a USSD screen to a subscriber inside an active session.",
+      "reference": "references/03-ussd.md",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID as given when provisioned." },
+        { "name": "password", "type": "string", "required": true, "description": "Password given when provisioned." },
+        { "name": "version", "type": "string", "required": false, "description": "API version. Defaults to latest." },
+        { "name": "message", "type": "string", "required": true, "description": "Screen text sent to the handset. ~182 char limit; assume 160." },
+        { "name": "sessionId", "type": "string", "required": true, "description": "Session number assigned by the USSD gateway. Echo the one the platform sent you; never generate your own." },
+        { "name": "ussdOperation", "type": "enum", "required": true, "enum": ["mt-init", "mt-cont", "mt-fin"], "description": "mt-init starts an app-initiated session, mt-cont keeps it open, mt-fin closes it." },
+        { "name": "destinationAddress", "type": "string", "required": true, "description": "tel:-prefixed subscriber address; may be a hash key." },
+        { "name": "encoding", "type": "enum", "required": false, "enum": ["440"], "description": "440 = plain ASCII." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "requestId", "type": "string", "description": "Uniquely identifies the request within Ideamart." },
+        { "name": "timeStamp", "type": "string", "description": "Processed timestamp." },
+        { "name": "version", "type": "string", "description": "API version." }
+      ],
+      "sampleRequest": { "applicationId": "APP_000001", "password": "…", "version": "1.0", "message": "1. Press One\n2. Press Two\n3. Exit", "sessionId": "1330929317043", "ussdOperation": "mt-cont", "destinationAddress": "tel:94771234567", "encoding": "440" },
+      "sampleResponse": { "statusCode": "S1000", "timeStamp": "1203051205", "statusDetail": "Success", "requestId": "1330929317059", "version": "1.0" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1309", "E1383"],
+      "rules": [
+        "Echo the platform's sessionId. A wrong one orphans the session.",
+        "Terminal screens must use mt-fin, or the session hangs until the network times it out.",
+        "Plain ASCII only (encoding 440) — no emoji, no Sinhala/Tamil script, no smart quotes.",
+        "Reply fast: USSD sessions time out in seconds."
+      ]
+    },
+    {
+      "id": "subscription-register",
+      "name": "Subscription Register",
+      "aliases": ["subscribe", "opt-in"],
+      "category": "subscription",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/subscription/send",
+      "summary": "Opt a subscriber in to the application.",
+      "reference": "references/04-subscription.md",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID as received when provisioned." },
+        { "name": "password", "type": "string", "required": true, "description": "Password as received when provisioned." },
+        { "name": "version", "type": "string", "required": false, "description": "API version. Defaults to latest." },
+        { "name": "action", "type": "enum", "required": true, "enum": ["1"], "description": "1 = opt in. Documented as a string; numeric 1 is also accepted." },
+        { "name": "subscriberId", "type": "string", "required": true, "description": "tel:-prefixed subscriber address; may be masked." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "requestId", "type": "string", "description": "Uniquely identifies the request within the SDP." },
+        { "name": "subscriptionStatus", "type": "enum", "description": "REGISTERED, UNREGISTERED or PENDING. PENDING CHARGE means the subscriber has not been charged yet." },
+        { "name": "version", "type": "string", "description": "API version." }
+      ],
+      "sampleRequest": { "applicationId": "APP_001807", "password": "…", "version": "1.0", "action": "1", "subscriberId": "tel:94771234567" },
+      "sampleResponse": { "version": "1.0", "requestId": "1374746416574", "statusCode": "S1000", "statusDetail": "SUCCESS", "subscriptionStatus": "REGISTERED" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1309", "E1317", "E1324", "E1351", "E1342", "E1343"],
+      "benignCodes": ["E1351"],
+      "rules": [
+        "Only call with explicit, recorded consent. Disclose amount and frequency before registering.",
+        "E1351 (already registered) is success — the desired state already holds.",
+        "A PENDING result is not active yet; wait for the subscription notification before delivering the service."
+      ]
+    },
+    {
+      "id": "subscription-unregister",
+      "name": "Subscription Unregister",
+      "aliases": ["unsub", "unsubscribe", "opt-out"],
+      "category": "subscription",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/subscription/send",
+      "summary": "Opt a subscriber out of the application.",
+      "reference": "references/04-subscription.md",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID as received when provisioned." },
+        { "name": "password", "type": "string", "required": true, "description": "Password as received when provisioned." },
+        { "name": "version", "type": "string", "required": false, "description": "API version. Defaults to latest." },
+        { "name": "action", "type": "enum", "required": true, "enum": ["0"], "description": "0 = opt out." },
+        { "name": "subscriberId", "type": "string", "required": true, "description": "tel:-prefixed subscriber address; may be masked." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "requestId", "type": "string", "description": "Uniquely identifies the request within the SDP." },
+        { "name": "subscriptionStatus", "type": "enum", "description": "UNREGISTERED on success." },
+        { "name": "version", "type": "string", "description": "API version." }
+      ],
+      "sampleRequest": { "applicationId": "APP_001807", "password": "…", "version": "1.0", "action": "0", "subscriberId": "tel:94771234567" },
+      "sampleResponse": { "version": "1.0", "requestId": "1374746416574", "statusCode": "S1000", "statusDetail": "SUCCESS", "subscriptionStatus": "UNREGISTERED" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1309", "E1356"],
+      "benignCodes": ["E1356"],
+      "rules": [
+        "Unregister must be as easy as register — offer it over MO SMS (STOP/UNSUB/OFF), USSD and in-app.",
+        "E1356 (not registered) is success — the desired state already holds.",
+        "Honour it immediately, including cancelling queued and scheduled messages."
+      ]
+    },
+    {
+      "id": "subscription-status",
+      "name": "Subscription Status",
+      "category": "subscription",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/subscription/getStatus",
+      "summary": "Check the current subscription status of one subscriber.",
+      "reference": "references/04-subscription.md",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID as received when provisioned." },
+        { "name": "password", "type": "string", "required": true, "description": "Password as received when provisioned." },
+        { "name": "subscriberId", "type": "string", "required": true, "description": "tel:-prefixed subscriber address; may be masked." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "subscriptionStatus", "type": "enum", "description": "REGISTERED / UNREGISTERED / PENDING / CHARGE." },
+        { "name": "version", "type": "string", "description": "API version." }
+      ],
+      "sampleRequest": { "applicationId": "APP_001807", "password": "…", "subscriberId": "tel:94771234567" },
+      "sampleResponse": { "version": "1.0", "subscriptionStatus": "REGISTERED", "statusCode": "S1000", "statusDetail": "SUCCESS" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1309", "E1356"],
+      "rules": [
+        "Use for reconciliation, not as a per-request gate — mirror state locally from the subscription notification instead."
+      ]
+    },
+    {
+      "id": "subscription-query-base",
+      "name": "Query Base (subscriber base size)",
+      "aliases": ["base size", "query base", "subscriber count"],
+      "category": "subscription",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/subscription/query-base",
+      "summary": "Return the number of subscribers currently registered to the application.",
+      "reference": "references/04-subscription.md",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID as received when provisioned." },
+        { "name": "password", "type": "string", "required": true, "description": "Password as received when provisioned." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "baseSize", "type": "string", "description": "Current subscriber base size. Arrives as a string — coerce before arithmetic." },
+        { "name": "version", "type": "string", "description": "API version." }
+      ],
+      "sampleRequest": { "applicationId": "APP_001807", "password": "…" },
+      "sampleResponse": { "version": "1.0", "baseSize": "10", "statusCode": "S1000", "statusDetail": "SUCCESS" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1309"],
+      "rules": [
+        "Needs no subscriber and costs nothing — the ideal connectivity and credential smoke test.",
+        "baseSize is a string. Parse it.",
+        "Poll on a schedule into your own metrics rather than per page load.",
+        "Sanity-check it before any tel:all broadcast."
+      ]
+    },
+    {
+      "id": "otp-request",
+      "name": "OTP Request",
+      "category": "otp",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/subscription/otp/request",
+      "summary": "Dispatch a one-time PIN by SMS so a web or app user can be registered from a plain mobile number.",
+      "reference": "references/04-subscription.md",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID as received when provisioned." },
+        { "name": "password", "type": "string", "required": true, "description": "Password as received when provisioned." },
+        { "name": "subscriberId", "type": "string", "required": true, "description": "tel:-prefixed mobile number the user typed." },
+        { "name": "applicationHash", "type": "string", "required": false, "description": "A UUID you generate per request, for tracing." },
+        { "name": "applicationMetaData", "type": "object", "required": false, "description": "client (MOBILEAPP | WebSite | DESKTOP), device, os, appCode (package name / store URL / page URL / download URL)." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "referenceNo", "type": "string", "description": "Pass to OTP Verify. Keep server-side, in the session — never send it to the client." },
+        { "name": "version", "type": "string", "description": "API version." }
+      ],
+      "sampleRequest": { "applicationId": "APP_001100", "password": "…", "subscriberId": "tel:94771234567", "applicationHash": "y3b84346f63899a", "applicationMetaData": { "client": "MOBILEAPP", "device": "Samsung S10", "os": "android8", "appCode": "https://play.google.com/store/apps/details?id=lk.example.app" } },
+      "sampleResponse": { "statusCode": "S1000", "statusDetail": "Success", "referenceNo": "3b84346f63899a32ec742a676532ec74dffe4f5", "version": "1.0" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1351"],
+      "rules": [
+        "Rate-limit per number AND per IP, or the app becomes an SMS-bombing tool at your expense.",
+        "One OTP is valid for 60 minutes.",
+        "Always call from a backend with a static IP."
+      ]
+    },
+    {
+      "id": "otp-verify",
+      "name": "OTP Verify",
+      "category": "otp",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/subscription/otp/verify",
+      "summary": "Verify a PIN and receive the masked subscriberId to use with every other API.",
+      "reference": "references/04-subscription.md",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID as received when provisioned." },
+        { "name": "password", "type": "string", "required": true, "description": "Password as received when provisioned." },
+        { "name": "referenceNo", "type": "string", "required": true, "description": "From the OTP Request response. Server-side only." },
+        { "name": "otp", "type": "string", "required": true, "description": "The PIN the user entered." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "subscriberId", "type": "string", "description": "Masked subscriber identifier. Use this for SMS, Subscription and Charging from now on." },
+        { "name": "subscriptionStatus", "type": "enum", "description": "REGISTERED on success." },
+        { "name": "version", "type": "string", "description": "API version." }
+      ],
+      "sampleRequest": { "applicationId": "APP_001100", "password": "…", "referenceNo": "3b84346f63899a32ec742a676532ec74dffe4f5", "otp": "123564" },
+      "sampleResponse": { "statusCode": "S1000", "statusDetail": "Success", "subscriptionStatus": "REGISTERED", "version": "1.0", "subscriberId": "tel:hu3b84346f63899a32ec742a666503a02a4dffe4f5" },
+      "statusCodes": ["S1000", "E1850", "E1851", "E1852", "E1853"],
+      "rules": [
+        "Maximum 3 attempts per OTP — enforce it on your side too.",
+        "Never log the OTP or the referenceNo.",
+        "Store the returned masked subscriberId as the user's Ideamart identity."
+      ]
+    },
+    {
+      "id": "caas-direct-debit",
+      "name": "CaaS Direct Debit",
+      "aliases": ["charge", "debit", "direct carrier billing"],
+      "category": "caas",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/caas/direct/debit",
+      "summary": "Charge a specific amount from a subscriber's mobile account. Moves real money.",
+      "reference": "references/05-caas.md",
+      "movesMoney": true,
+      "idempotencyKey": "externalTrxId",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID generated when provisioning." },
+        { "name": "password", "type": "string", "required": true, "description": "Password authenticating the application." },
+        { "name": "externalTrxId", "type": "string", "required": true, "description": "Your transaction ID, mapping request to response. Max 32 characters. Persist BEFORE calling — it is the idempotency key." },
+        { "name": "subscriberId", "type": "string", "required": true, "description": "MSISDN or hash key of the subscriber to charge." },
+        { "name": "amount", "type": "string", "required": true, "description": "Amount to charge, sent as a string. Hold as a decimal type in your own code." },
+        { "name": "paymentInstrument", "type": "string", "required": true, "description": "The account the debit is performed on, e.g. MobileAccount." },
+        { "name": "accountId", "type": "string", "required": false, "description": "Account of the payment instrument." },
+        { "name": "currency", "type": "string", "required": false, "description": "Currency of the amount. LKR for Sri Lanka." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "externalTrxId", "type": "string", "description": "Echo of your ID. Assert it matches what you sent." },
+        { "name": "internalTrxId", "type": "string", "description": "Payment gateway transaction ID. Persist it — support and reconciliation use this." },
+        { "name": "referenceId", "type": "string", "description": "8-digit number for the payment request, where an external charging menu is involved." },
+        { "name": "timeStamp", "type": "string", "description": "ISO-8601 date/time of the transaction." }
+      ],
+      "sampleRequest": { "applicationId": "APP_000017", "password": "…", "externalTrxId": "12345678901234567890123456789012", "subscriberId": "tel:94771234567", "accountId": "123456", "paymentInstrument": "MobileAccount", "currency": "LKR", "amount": "1" },
+      "sampleResponse": { "statusCode": "S1000", "timeStamp": "2012-07-30T12:48:10-0400", "statusDetail": "Success", "externalTrxId": "12345678901234567890123456789012", "internalTrxId": "321" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1308", "E1328", "E1329", "E1330", "E1336", "E1337", "E1370", "E1371", "E1372", "E1373", "E1376", "E1378", "E1379", "E1380", "E1382", "E1404", "E1405", "E1406", "E1605", "E1606"],
+      "benignCodes": ["E1379"],
+      "rules": [
+        "The amount must be pre-agreed and disclosed to the user before they subscribe.",
+        "Persist externalTrxId before the HTTP call, then update the row from the response.",
+        "Never retry with a fresh externalTrxId — a timeout does not mean the charge failed.",
+        "E1379 (already completed) is success. E1406 (user rejected) must never be retried.",
+        "Amount and currency come from server-side config, never from client input."
+      ]
+    },
+    {
+      "id": "caas-balance-query",
+      "name": "CaaS Query Balance",
+      "category": "caas",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/caas/balance/query",
+      "summary": "Query a subscriber's remaining chargeable balance.",
+      "reference": "references/05-caas.md",
+      "requiresProvisioning": "Enable Query Balance Requests",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID generated when provisioning." },
+        { "name": "password", "type": "string", "required": true, "description": "Password authenticating the application." },
+        { "name": "subscriberId", "type": "string", "required": true, "description": "MSISDN or username of the subscriber being queried. The official sample omits the tel: prefix here, unlike every other service; send it tel:-prefixed for consistency — that is what works in practice." },
+        { "name": "accountId", "type": "string", "required": false, "description": "Account of the payment instrument. Single value per request." },
+        { "name": "currency", "type": "string", "required": false, "description": "Must be LKR." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "chargeableBalance", "type": "string", "description": "Remaining balance (prepaid) or credit limit minus outstanding bill (postpaid). A string — parse as decimal." },
+        { "name": "accountType", "type": "string", "description": "Pre Paid / Post Paid." },
+        { "name": "accountStatus", "type": "string", "description": "Account status." }
+      ],
+      "sampleRequest": { "applicationId": "APP_000018", "password": "…", "subscriberId": "tel:94771234567", "accountId": "12345", "currency": "LKR" },
+      "sampleResponse": { "chargeableBalance": "300.0", "statusCode": "S1000", "statusDetail": "Success", "accountStatus": "Active", "accountType": "Pre Paid" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1309"],
+      "rules": [
+        "Requires the Enable Query Balance Requests toggle in CaaS provisioning.",
+        "Advisory only — the balance can change before the debit lands. Always handle E1378 on the debit anyway.",
+        "chargeableBalance is a string — parse as decimal, never compare a float for equality."
+      ]
+    },
+    {
+      "id": "lbs-locate",
+      "name": "LBS Get Location",
+      "category": "lbs",
+      "direction": "outbound",
+      "method": "POST",
+      "path": "/lbs/locate",
+      "absoluteUrl": "https://api.dialog.lk/lbs/locate",
+      "summary": "Return a subscriber's network-derived location. Works on feature phones; accuracy in hundreds of metres.",
+      "reference": "references/06-lbs-ivr.md",
+      "parameters": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Application ID from provisioning." },
+        { "name": "password", "type": "string", "required": true, "description": "Password from provisioning." },
+        { "name": "subscriberId", "type": "string", "required": true, "description": "MSISDN whose location is requested. One subscriber per request. May be masked." },
+        { "name": "serviceType", "type": "enum", "required": true, "enum": ["IMMEDIATE"], "description": "MLP service type. Only IMMEDIATE is currently supported." },
+        { "name": "version", "type": "string", "required": false, "description": "API version (1.0, 2.0)." },
+        { "name": "responseTime", "type": "enum", "required": false, "enum": ["NO_DELAY", "LOW_DELAY", "DELAY_TOLERANCE"], "description": "Accepted delay. Capped by provisioning — you may request your level or weaker, never stronger." },
+        { "name": "horizontalAccuracy", "type": "enum", "required": false, "enum": ["100", "500", "1000", "1500"], "description": "Required accuracy in metres. 100 is the strictest and highest precedence." },
+        { "name": "freshness", "type": "enum", "required": false, "enum": ["HIGH_LOW", "LOW_HIGH", "HIGH", "LOW"], "description": "Required freshness. HIGH_LOW is the highest precedence." }
+      ],
+      "responseFields": [
+        { "name": "statusCode", "type": "string", "description": "S1000 on success." },
+        { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
+        { "name": "messageId", "type": "string", "description": "Uniquely identifies the request within the SDP. Always present." },
+        { "name": "latitude", "type": "string", "description": "Latitude. Present on success only." },
+        { "name": "longitude", "type": "string", "description": "Longitude. Present on success only." },
+        { "name": "freshness", "type": "string", "description": "Actual age of the fix, in minutes." },
+        { "name": "horizontalAccuracy", "type": "string", "description": "Actual accuracy radius, in metres." },
+        { "name": "subscriberState", "type": "boolean", "description": "Handset power state. true = on." },
+        { "name": "timeStamp", "type": "string", "description": "Transaction date/time. Present on success only." }
+      ],
+      "sampleRequest": { "applicationId": "APP_001768", "password": "…", "subscriberId": "tel:94771234567", "serviceType": "IMMEDIATE" },
+      "sampleResponse": { "statusCode": "S1000", "statusDetail": "Success", "timeStamp": "20130405181744", "subscriberState": true, "latitude": "79.948944", "longitude": "6.707778", "horizontalAccuracy": "-7.0", "freshness": "8.0", "messageId": "101304051246360081", "version": "1.0" },
+      "statusCodes": ["S1000", "E1303", "E1313", "E1309", "E1367", "E1368"],
+      "rules": [
+        "Uses the api.dialog.lk host, not api.ideamart.io.",
+        "Omit the QoS fields unless you know your provisioned level — requesting above it fails with E1367.",
+        "Coordinates are strings and absent on failure. Sanity-check against Sri Lanka (lat ~6-10, lon ~79-82) before use.",
+        "horizontalAccuracy is a radius — treat the position as a circle, never a point.",
+        "Requires explicit, purpose-specific consent. Consent to receive SMS is not consent to be located."
+      ]
+    }
+  ],
+
+  "callbacks": [
+    {
+      "id": "sms-mo",
+      "name": "MO SMS Receive",
+      "category": "sms",
+      "direction": "inbound",
+      "suggestedPath": "/api/ideamart/sms/mo",
+      "configuredIn": "SMS API settings",
+      "summary": "Fires when a subscriber texts your shortcode with your keyword.",
+      "reference": "references/02-sms.md",
+      "dedupeKey": "requestId",
+      "fields": [
+        { "name": "version", "type": "string", "required": true, "description": "API version." },
+        { "name": "applicationId", "type": "string", "required": true, "description": "Your application ID — verify it matches." },
+        { "name": "sourceAddress", "type": "string", "required": true, "description": "Sender address, masked if masking is enabled." },
+        { "name": "message", "type": "string", "required": true, "description": "Message as sent by the user, including the keyword." },
+        { "name": "requestId", "type": "string", "required": true, "description": "Unique request identifier within Ideamart." },
+        { "name": "encoding", "type": "enum", "required": true, "enum": ["0", "240", "245"], "description": "0 Text / 240 Flash / 245 Binary (hex-encoded)." }
+      ],
+      "samplePayload": { "message": "my testing message", "sourceAddress": "tel:94771234567", "requestId": "APP_000001", "encoding": "0", "version": "1.0" },
+      "rules": [
+        "Recognise STOP / UNSUB / OFF and honour them by calling Unregister.",
+        "Do not perform a destructive or chargeable action on the content of one MO SMS alone."
+      ]
+    },
+    {
+      "id": "sms-dlr",
+      "name": "SMS Delivery Status Report",
+      "category": "sms",
+      "direction": "inbound",
+      "suggestedPath": "/api/ideamart/sms/dlr",
+      "configuredIn": "SMS API settings",
+      "summary": "Final delivery state of an MT SMS sent with deliveryStatusRequest 1.",
+      "reference": "references/02-sms.md",
+      "dedupeKey": "requestId + deliveryStatus",
+      "fields": [
+        { "name": "destinationAddress", "type": "string", "required": true, "description": "Subscriber address." },
+        { "name": "timeStamp", "type": "string", "required": true, "description": "Documented as yyMMddHHmm; samples show yyyyMMddHHmmss. Parse both lengths." },
+        { "name": "requestId", "type": "string", "required": true, "description": "Ties the report to the original send." },
+        { "name": "deliveryStatus", "type": "enum", "required": true, "enum": ["DELIVERED", "EXPIRED", "DELETED", "UNDELIVERABLE", "ACCEPTED", "UNKNOWN", "REJECTED", "DELIVRD", "UNDELIV", "ACCEPTD", "REJECTD"], "description": "Ideamart uses the long forms; the SMPP gateway uses the abbreviated ones. Accept both." }
+      ],
+      "samplePayload": { "destinationAddress": "tel:94771234567", "timeStamp": "20120113082110", "requestId": "MSG_000111", "deliveryStatus": "DELIVERED" },
+      "rules": [
+        "ACCEPTED is not DELIVERED — it only means the network took the message.",
+        "Reports can arrive out of order, late, twice, or never."
+      ]
+    },
+    {
+      "id": "ussd-receive",
+      "name": "USSD Receive",
+      "category": "ussd",
+      "direction": "inbound",
+      "suggestedPath": "/api/ideamart/ussd",
+      "configuredIn": "USSD API settings",
+      "summary": "Fires when a subscriber dials your code or presses a key.",
+      "reference": "references/03-ussd.md",
+      "dedupeKey": "requestId",
+      "fields": [
+        { "name": "version", "type": "string", "required": true, "description": "API version." },
+        { "name": "applicationId", "type": "string", "required": true, "description": "Your application ID." },
+        { "name": "sessionId", "type": "string", "required": true, "description": "Session identifier — echo this back on every send." },
+        { "name": "ussdOperation", "type": "enum", "required": true, "enum": ["mo-init", "mo-cont"], "description": "mo-init starts a session, mo-cont is subsequent input." },
+        { "name": "sourceAddress", "type": "string", "required": true, "description": "Sender address, possibly masked." },
+        { "name": "vlrAddress", "type": "string", "required": false, "description": "VLR address of the sender." },
+        { "name": "message", "type": "string", "required": true, "description": "What the user dialled or typed." },
+        { "name": "encoding", "type": "string", "required": true, "description": "440 = plain ASCII." },
+        { "name": "requestId", "type": "string", "required": true, "description": "Unique request identifier within Ideamart." }
+      ],
+      "samplePayload": { "message": "*141#", "ussdOperation": "mo-init", "requestId": "1330933229901", "sessionId": "1330929317043", "encoding": "440", "sourceAddress": "tel:94771234567", "applicationId": "APP_000001", "version": "1.0" },
+      "rules": [
+        "The response body is only an acknowledgement — the screen the user sees comes from a separate POST /ussd/send.",
+        "Sessions time out in seconds. Acknowledge before doing any work."
+      ]
+    },
+    {
+      "id": "subscription-notification",
+      "name": "Subscription Notification",
+      "category": "subscription",
+      "direction": "inbound",
+      "suggestedPath": "/api/ideamart/subscription/notification",
+      "configuredIn": "Subscription API settings",
+      "summary": "Fires whenever a subscription changes, including changes you did not initiate.",
+      "reference": "references/04-subscription.md",
+      "dedupeKey": "subscriberId + status + timeStamp",
+      "fields": [
+        { "name": "applicationId", "type": "string", "required": true, "description": "Your application ID." },
+        { "name": "subscriberId", "type": "string", "required": true, "description": "Subscriber address, possibly masked." },
+        { "name": "status", "type": "enum", "required": true, "enum": ["REGISTERED", "UNREGISTERED"], "description": "New subscription state." },
+        { "name": "frequency", "type": "string", "required": false, "description": "Charging frequency for the subscription, e.g. Monthly." },
+        { "name": "version", "type": "string", "required": true, "description": "API version." },
+        { "name": "timeStamp", "type": "string", "required": true, "description": "When the change happened." }
+      ],
+      "samplePayload": { "applicationId": "APP_001807", "frequency": "Monthly", "status": "REGISTERED", "subscriberId": "tel:94771234567", "version": "1.0", "timeStamp": "20130402025896" },
+      "rules": [
+        "This is the authoritative source of subscription state — consume it and keep a local mirror instead of polling getStatus."
+      ]
+    },
+    {
+      "id": "charging-notification",
+      "name": "Charging Notification",
+      "category": "caas",
+      "direction": "inbound",
+      "suggestedPath": "/api/ideamart/charging/notification",
+      "configuredIn": "CaaS Charging Notification URL",
+      "summary": "Reports the outcome of every executed charging request.",
+      "reference": "references/05-caas.md",
+      "dedupeKey": "externalTrxId",
+      "fields": [
+        { "name": "applicationId", "type": "string", "required": false, "description": "Your application ID." },
+        { "name": "externalTrxId", "type": "string", "required": false, "description": "Your transaction ID — the match key." },
+        { "name": "internalTrxId", "type": "string", "required": false, "description": "Payment gateway transaction ID." },
+        { "name": "subscriberId", "type": "string", "required": false, "description": "Subscriber charged, possibly masked." },
+        { "name": "amount", "type": "string", "required": false, "description": "Amount charged." },
+        { "name": "currency", "type": "string", "required": false, "description": "Currency of the amount." },
+        { "name": "statusCode", "type": "string", "required": false, "description": "Outcome of the charge." },
+        { "name": "statusDetail", "type": "string", "required": false, "description": "Human-readable outcome." },
+        { "name": "timeStamp", "type": "string", "required": false, "description": "When the charge completed." }
+      ],
+      "samplePayload": { "applicationId": "APP_000017", "externalTrxId": "abc123", "internalTrxId": "321", "subscriberId": "tel:94771234567", "amount": "6", "currency": "LKR", "statusCode": "S1000", "statusDetail": "Success", "timeStamp": "2012-07-30T12:48:10-0400" },
+      "rules": [
+        "This is your reconciliation channel — resolve every charge left UNKNOWN after a timeout here.",
+        "A duplicate that double-counts revenue is a real bug. Deduplicate on externalTrxId."
+      ]
+    }
+  ],
+
+  "statusCodeClasses": {
+    "success": { "retry": false, "action": "Proceed." },
+    "configuration": { "retry": false, "action": "Provisioning or credentials are wrong. Fix the portal — code changes will not help. Alert on these in production; the integration is down, not one request." },
+    "client": { "retry": false, "action": "Your payload is wrong, or the user gave bad input. Fix the request or prompt the user." },
+    "user-state": { "retry": "after-user-action", "action": "The user is not eligible right now. Communicate; do not retry in a loop." },
+    "transient": { "retry": true, "action": "Platform-side. Exponential backoff with jitter, capped attempts, then dead-letter." }
+  },
+
+  "statusCodes": {
+    "S1000": { "class": "success", "description": "Success" },
+    "E1301": { "class": "configuration", "description": "Requested ApplicationID is not allowed within the System" },
+    "E1302": { "class": "configuration", "description": "Requested SP is not allowed within the System" },
+    "E1303": { "class": "configuration", "description": "IP address, which the request originates from, is not listed within the allowed-host-address list", "fix": "Run curl -4 https://myip.ideamart.io on the calling server and add that IP to Allowed Host Addresses." },
+    "E1304": { "class": "configuration", "description": "Requested Application is not found within the System" },
+    "E1305": { "class": "configuration", "description": "Requested ApplicationID is invalid" },
+    "E1306": { "class": "configuration", "description": "Routing Key (shortcode/keyword) for the NCS service is invalid" },
+    "E1307": { "class": "configuration", "description": "Requested SP is not found within the System" },
+    "E1308": { "class": "client", "description": "Error during the charging operation" },
+    "E1309": { "class": "configuration", "description": "Requested service is not allowed for this Application", "fix": "That API was not provisioned for this app." },
+    "E1310": { "class": "configuration", "description": "MO flow is not allowed for this Application" },
+    "E1311": { "class": "configuration", "description": "MT flow is not allowed for this Application" },
+    "E1312": { "class": "client", "description": "Invalid request" },
+    "E1313": { "class": "configuration", "description": "Authentication failure. There is no active application, or no active service provider, or the given password in the request is invalid.", "fix": "Check IDEAMART_APP_ID and IDEAMART_PASSWORD, and that the app is active." },
+    "E1315": { "class": "configuration", "description": "Requested NCS service is not available" },
+    "E1316": { "class": "transient", "description": "Sorry, the {0} application is temporarily unavailable. Please try again later." },
+    "E1317": { "class": "user-state", "description": "MSISDN in the request is in an invalid state (may be blocked, or have an invalid number of digits)" },
+    "E1318": { "class": "transient", "description": "Sorry, the {0} application is temporarily unavailable. Please try again later." },
+    "E1319": { "class": "transient", "description": "Sorry, the {0} application is temporarily unavailable. Please try again later." },
+    "E1322": { "class": "configuration", "description": "Requested sender is not allowed" },
+    "E1323": { "class": "configuration", "description": "Requested recipients not allowed" },
+    "E1324": { "class": "configuration", "description": "Subscription via HTTP is not allowed" },
+    "E1325": { "class": "client", "description": "Format of the address is invalid", "fix": "Missing tel: prefix, or a + / space slipped in." },
+    "E1326": { "class": "user-state", "description": "Sorry, your SMS sent to {0} application could not be processed. Please check if you have sufficient balance and try again." },
+    "E1327": { "class": "configuration", "description": "App id not allowed in pgw" },
+    "E1328": { "class": "configuration", "description": "Charging operation not allowed. Please check the NCS configuration." },
+    "E1329": { "class": "configuration", "description": "Charging amount too high. Please check the NCS configuration." },
+    "E1330": { "class": "configuration", "description": "Charging amount too low. Please check the NCS configuration." },
+    "E1331": { "class": "configuration", "description": "Sorry, invalid/unauthorized source address. Please check the availability of default sender address or aliases for SMS-MT in {0} application.", "fix": "sourceAddress must be a provisioned alias." },
+    "E1332": { "class": "transient", "description": "Delivery failed" },
+    "E1333": { "class": "user-state", "description": "Message contains suspected abusive content, or subscriber base is larger than the limit; will be stored for admin approval" },
+    "E1334": { "class": "client", "description": "Message length is too long. Maximum message length is {0}" },
+    "E1335": { "class": "client", "description": "Message length is too long. Maximum message length for advertisement messages is {0}" },
+    "E1336": { "class": "configuration", "description": "No matching service code found for the charging amount" },
+    "E1337": { "class": "user-state", "description": "Subscriber authentication by charging gateway failed" },
+    "E1340": { "class": "client", "description": "Invalid request - {0}" },
+    "E1341": { "class": "transient", "description": "Delivery failed. Errors occurred while sending the request for the intended destinations" },
+    "E1342": { "class": "user-state", "description": "Sorry, your phone number is blacklisted to use this application {0}" },
+    "E1343": { "class": "user-state", "description": "Non-whitelisted mobile number accessing services of application {0}", "fix": "In Limited Production, only numbers in Whitelisted Numbers can use the app." },
+    "E1344": { "class": "user-state", "description": "Sorry, your SMS sent to {0} application could not be processed. Please check if you have sufficient balance and try again." },
+    "E1351": { "class": "user-state", "description": "User already registered", "benignFor": ["subscription-register"] },
+    "E1356": { "class": "user-state", "description": "User not registered", "benignFor": ["subscription-unregister"] },
+    "E1357": { "class": "user-state", "description": "Sorry, you are unauthorised to use the {0} application." },
+    "E1360": { "class": "transient", "description": "Error response from SDP-SBL" },
+    "E1361": { "class": "client", "description": "Message rejected by SDP-SBL" },
+    "E1362": { "class": "client", "description": "Invalid request" },
+    "E1363": { "class": "transient", "description": "No response / response delayed from SDP-SBL" },
+    "E1364": { "class": "transient", "description": "Could not send the message to SDP-SBL" },
+    "E1365": { "class": "user-state", "description": "Subscriber is not registered to use this application" },
+    "E1366": { "class": "transient", "description": "MT delivery failed" },
+    "E1367": { "class": "client", "description": "Request QoS not supported", "fix": "LBS — you requested a QoS level above what the app was provisioned for." },
+    "E1368": { "class": "client", "description": "Requested ServiceType not supported" },
+    "E1370": { "class": "client", "description": "Invalid reservation Id" },
+    "E1371": { "class": "configuration", "description": "App does not accept payments from the given Payment Instrument" },
+    "E1372": { "class": "user-state", "description": "Default payment instrument for the user not found" },
+    "E1373": { "class": "user-state", "description": "Invalid payer account" },
+    "E1374": { "class": "client", "description": "Invalid payee account" },
+    "E1375": { "class": "client", "description": "Transfer between two different payment instruments is not allowed" },
+    "E1376": { "class": "client", "description": "Unknown charging error", "fix": "Escalate to support with the externalTrxId." },
+    "E1377": { "class": "client", "description": "Invalid payment instrument name" },
+    "E1378": { "class": "user-state", "description": "Insufficient balance", "fix": "Tell the user; retry later, not immediately." },
+    "E1379": { "class": "success", "description": "Transaction has already completed", "benignFor": ["caas-direct-debit"], "fix": "Your idempotency key worked. Treat as success — do NOT charge again." },
+    "E1380": { "class": "client", "description": "Transaction currency not supported" },
+    "E1381": { "class": "configuration", "description": "IP address, which the request originates from, is not allowed to access this service" },
+    "E1382": { "class": "user-state", "description": "Payment Instrument is not allowed to perform transactions" },
+    "E1383": { "class": "configuration", "description": "USSD network initiated flow not allowed" },
+    "E1384": { "class": "configuration", "description": "International SMS sending is disabled" },
+    "E1387": { "class": "configuration", "description": "NCS SLA configured Merchant ID not found in DB" },
+    "E1400": { "class": "transient", "description": "Card Management Module Unavailable" },
+    "E1401": { "class": "client", "description": "Invalid NFC Token" },
+    "E1402": { "class": "client", "description": "NFC Token does not match with request" },
+    "E1404": { "class": "client", "description": "Charging Failed" },
+    "E1405": { "class": "user-state", "description": "Charging Authorization Timed out", "fix": "The user did not confirm in time." },
+    "E1406": { "class": "user-state", "description": "Charging Authorization Rejected", "fix": "The user declined. Never retry." },
+    "E1600": { "class": "transient", "description": "Sorry, the {0} application is temporarily unavailable. Please try again later." },
+    "E1601": { "class": "transient", "description": "An unexpected error has occurred" },
+    "E1602": { "class": "transient", "description": "Message delivery failed" },
+    "E1603": { "class": "transient", "description": "Temporary System Error occurred while delivering your request" },
+    "E1605": { "class": "client", "description": "Invalid charging request" },
+    "E1606": { "class": "client", "description": "Invalid charging amount" },
+    "E1825": { "class": "client", "description": "Unsupported operation" },
+    "E1830": { "class": "user-state", "description": "This service is not available for {0} users" },
+    "E1850": { "class": "client", "description": "Invalid OTP", "fix": "Maximum 3 attempts per OTP." },
+    "E1851": { "class": "client", "description": "OTP request has expired", "fix": "OTPs are valid for 60 minutes." },
+    "E1852": { "class": "client", "description": "Maximum number of OTP attempts reached" },
+    "E1853": { "class": "client", "description": "No active OTP request found for this reference number" }
+  },
+
+  "practices": [
+    { "id": "no-hardcoded-credentials", "severity": "critical", "title": "Never hardcode applicationId or password", "detail": "Environment variables only, through one config module, validated at startup. Not in source, not in a client bundle, not in a committed file, not in a log, not in git history. Never prefixed NEXT_PUBLIC_ / VITE_ / REACT_APP_.", "reference": "references/09-security-best-practices.md" },
+    { "id": "backend-only", "severity": "critical", "title": "Never call Ideamart from client-side code", "detail": "Clients call your backend; your backend calls Ideamart. Credentials are a shared secret and the platform enforces IP whitelisting, which a mobile client cannot satisfy.", "reference": "references/09-security-best-practices.md" },
+    { "id": "consent", "severity": "critical", "title": "Explicit consent before register or charge", "detail": "Record who consented, when, through which channel, and the exact wording shown. Disclose amount, currency and frequency first. Ideamart suspends applications over this.", "reference": "references/09-security-best-practices.md" },
+    { "id": "idempotent-charging", "severity": "critical", "title": "Charging must be idempotent", "detail": "One externalTrxId per logical charge, persisted before the call, reused on retry. Never re-roll it — that double-charges a real person.", "reference": "references/05-caas.md" },
+    { "id": "status-code-branching", "severity": "critical", "title": "Branch on statusCode, not the HTTP status", "detail": "Ideamart returns HTTP 200 for application-level failures. Checking res.ok reports failures as successes.", "reference": "references/08-status-codes.md" },
+    { "id": "opaque-subscriber-id", "severity": "high", "title": "Treat subscriberId as opaque", "detail": "With masking enabled it is a hash, not a phone number. Do not parse it, strip it, or assume a length. Store and send back exactly what you received.", "reference": "references/09-security-best-practices.md" },
+    { "id": "tls-verification", "severity": "high", "title": "Never ship rejectUnauthorized: false", "detail": "Some hosts serve an incomplete certificate chain. Supply the missing intermediate CA explicitly; disabling verification exposes the credentials that can charge your subscribers.", "reference": "references/09-security-best-practices.md" },
+    { "id": "callback-ack-first", "severity": "high", "title": "Acknowledge callbacks before doing work", "detail": "Respond S1000 immediately, then process asynchronously. USSD sessions time out in seconds; slow handlers cause retries, duplicates and dropped sessions.", "reference": "references/07-callbacks.md" },
+    { "id": "callback-idempotency", "severity": "high", "title": "Every callback handler must be idempotent", "detail": "All five callbacks can arrive more than once. Deduplicate on the documented key. A duplicate charging notification that double-counts revenue is a real bug.", "reference": "references/07-callbacks.md" },
+    { "id": "callback-untrusted", "severity": "high", "title": "Never trust the callback body", "detail": "It is unauthenticated JSON from the public internet. Validate the schema, verify applicationId, restrict by source IP, rate-limit, and never treat a callback as authorisation.", "reference": "references/07-callbacks.md" },
+    { "id": "static-egress-ip", "severity": "high", "title": "A static egress IP is a hard requirement", "detail": "IP whitelisting is enforced with E1303. Serverless platforms with rotating egress need a NAT gateway or fixed-IP proxy. Decide before choosing a host.", "reference": "references/01-getting-started.md" },
+    { "id": "broadcast-guard", "severity": "high", "title": "Guard tel:all", "detail": "A broadcast to the entire subscriber base must never be reachable from an ordinary code path. Require an explicit, separately-authorised call and sanity-check against Query Base first.", "reference": "references/02-sms.md" },
+    { "id": "ussd-session-store", "severity": "medium", "title": "USSD session state must be shared across instances", "detail": "An in-process Map breaks the moment you scale horizontally or deploy. Use Redis or equivalent, with a ~2 minute TTL.", "reference": "references/03-ussd.md" },
+    { "id": "no-secret-logging", "severity": "medium", "title": "Never log secrets or unmasked subscriber data", "detail": "Log requestId, sessionId, externalTrxId and statusCode. Never the password, OTP, referenceNo, or an unmasked subscriberId. Mask in the logger, not at each call site.", "reference": "references/09-security-best-practices.md" },
+    { "id": "explicit-timeouts", "severity": "medium", "title": "Set an explicit timeout on every call", "detail": "10-15 seconds. No default-infinite requests.", "reference": "references/09-security-best-practices.md" },
+    { "id": "retry-discipline", "severity": "medium", "title": "Retry only transient codes and transport errors", "detail": "Exponential backoff with jitter, capped attempts, then dead-letter. Never retry a definitive E13xx, and never retry a debit with a new externalTrxId.", "reference": "references/08-status-codes.md" },
+    { "id": "local-subscription-mirror", "severity": "medium", "title": "Mirror subscription state locally", "detail": "Consume the subscription notification instead of calling getStatus on every request.", "reference": "references/04-subscription.md" },
+    { "id": "decimal-money", "severity": "medium", "title": "Use a decimal type for money", "detail": "Never a binary float. Amount and currency come from server-side config or a server-side price lookup, never from client input.", "reference": "references/05-caas.md" }
+  ]
+}

@@ -1,95 +1,221 @@
-# Ideamart Skill for AI Agents
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <img src="assets/logo.svg" width="132" alt="Ideamart Skill for Agents">
+  </picture>
+</p>
 
-An agent skill that lets any AI coding assistant build correct
-[Ideamart](https://ideamart.io) integrations — SMS, USSD, Subscription, OTP, CaaS charging
-and LBS — on Dialog Axiata's Sri Lankan telco platform, covering the operators **Dialog,
-Hutch (072 and 078) and Airtel**.
+<h1 align="center">Ideamart Skill for Agents</h1>
 
-Point your assistant at this repository and it stops guessing parameter names, stops treating
-HTTP 200 as success, stops hardcoding your application password, and starts producing
-integrations that survive Limited Production.
+<p align="center">
+  <em>Telco integrations your AI agent gets right the first time.</em>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-0F766E?style=flat-square" alt="MIT license">
+  <img src="https://img.shields.io/badge/endpoints-14-0F766E?style=flat-square" alt="14 endpoints">
+  <img src="https://img.shields.io/badge/callbacks-5-0F766E?style=flat-square" alt="5 callbacks">
+  <img src="https://img.shields.io/badge/status%20codes-80%2B-0F766E?style=flat-square" alt="80+ status codes">
+  <img src="https://img.shields.io/badge/works%20with-20%2B%20agents-0F766E?style=flat-square" alt="Works with 20+ agents">
+  <img src="https://img.shields.io/badge/dependencies-0-0F766E?style=flat-square" alt="Zero dependencies">
+</p>
+
+<p align="center">
+  <strong>SMS · USSD · Subscription · OTP · CaaS charging · LBS</strong><br>
+  <sub>Dialog Axiata's Sri Lankan telco platform — operators Dialog, Hutch (072/078) and Airtel.</sub>
+</p>
+
+---
+
+Ask an AI agent to integrate Ideamart today and it will confidently write
+`if (response.ok) return "sent"`. Ideamart returns **HTTP 200 for failures**, so that line
+reports every error as a success. It will also hardcode your `applicationId`, send
+`destinationAddresses` as a string, and — if you let it near the charging API — retry a timed
+out debit with a fresh transaction ID and charge someone twice.
+
+None of that is the model being careless. It is the model not having the contract.
+
+This repo gives it the contract: every endpoint, every parameter, every status code, and the
+handful of rules that separate a working integration from a suspended one.
 
 ---
 
 ## Install
 
-### Claude Code
+Pick your agent. Everything below is the same content behind a different filename.
 
-```bash
-# Project-scoped
-git clone https://github.com/<your-org>/IdeamartSkillForAgents .claude/skills/ideamart
+<details open>
+<summary><strong>Claude Code</strong></summary>
 
-# Or user-scoped, available in every project
-git clone https://github.com/<your-org>/IdeamartSkillForAgents ~/.claude/skills/ideamart
+```
+/plugin marketplace add OWNER/IdeamartSkillForAgents
+```
+```
+/plugin install ideamart@ideamart
 ```
 
-The skill activates automatically when you mention Ideamart, or explicitly with
-`/ideamart`.
-
-### Cursor
+Or clone it as a skill directly:
 
 ```bash
-git clone https://github.com/<your-org>/IdeamartSkillForAgents .ideamart
+git clone https://github.com/OWNER/IdeamartSkillForAgents ~/.claude/skills/ideamart
+```
+</details>
+
+<details>
+<summary><strong>Cursor</strong></summary>
+
+```bash
+git clone https://github.com/OWNER/IdeamartSkillForAgents .ideamart
 cp .ideamart/.cursor/rules/ideamart.mdc .cursor/rules/
 ```
+</details>
 
-Or add the repository URL under **Settings → Indexing & Docs**.
-
-### GitHub Copilot
+<details>
+<summary><strong>Codex</strong></summary>
 
 ```bash
-git clone https://github.com/<your-org>/IdeamartSkillForAgents .ideamart
+codex plugin marketplace add OWNER/IdeamartSkillForAgents
+codex plugin add ideamart@ideamart
+```
+</details>
+
+<details>
+<summary><strong>GitHub Copilot</strong></summary>
+
+CLI:
+
+```bash
+copilot plugin marketplace add OWNER/IdeamartSkillForAgents
+```
+
+Editor extension — copy the instructions file:
+
+```bash
 cp .ideamart/.github/copilot-instructions.md .github/
 ```
+</details>
 
-### Windsurf, Codex, Cline, Aider, Zed, and anything else reading `AGENTS.md`
+<details>
+<summary><strong>Gemini CLI / Antigravity</strong></summary>
 
 ```bash
-git clone https://github.com/<your-org>/IdeamartSkillForAgents .ideamart
+gemini extensions install https://github.com/OWNER/IdeamartSkillForAgents
+```
+</details>
+
+<details>
+<summary><strong>Windsurf · Cline · Kiro · Qoder</strong></summary>
+
+```bash
+git clone https://github.com/OWNER/IdeamartSkillForAgents .ideamart
+cp .ideamart/.windsurf/rules/ideamart.md  .windsurf/rules/     # Windsurf
+cp .ideamart/.clinerules/ideamart.md      .clinerules/         # Cline
+cp .ideamart/.kiro/steering/ideamart.md   .kiro/steering/      # Kiro
+cp .ideamart/.qoder/rules/ideamart.md     .qoder/rules/        # Qoder
+```
+</details>
+
+<details>
+<summary><strong>Aider · Zed · Amp · Jules · Junie · OpenCode · anything reading AGENTS.md</strong></summary>
+
+```bash
+git clone https://github.com/OWNER/IdeamartSkillForAgents .ideamart
 ```
 
-Then reference `.ideamart/AGENTS.md` from your project's own `AGENTS.md`, or copy it in.
+Then reference `.ideamart/AGENTS.md` from your own `AGENTS.md`, or copy it to the project root.
+</details>
 
-### Any assistant, no install
+<details>
+<summary><strong>No install — any assistant</strong></summary>
 
 Paste the raw URL and ask it to read the file:
 
 ```
-https://raw.githubusercontent.com/<your-org>/IdeamartSkillForAgents/main/AGENTS.md
+https://raw.githubusercontent.com/OWNER/IdeamartSkillForAgents/main/AGENTS.md
+```
+</details>
+
+Full matrix of what each agent reads: **[docs/agent-support.md](docs/agent-support.md)**.
+
+---
+
+## The part that makes it precise
+
+Documentation alone still leaves an agent recalling parameter names from memory. So the whole
+Ideamart contract also ships as **structured data** — [`catalog/ideamart-api.json`](catalog/ideamart-api.json) —
+with a zero-dependency CLI over it that any agent can drive through its shell.
+
+This is the capability an MCP server would give you, without running a server: no install, no
+dependencies, no process to keep alive, and it works in every agent that can run a command.
+
+```bash
+$ node tools/ideamart.mjs show subscription-query-base
+
+Query Base (subscriber base size)  (subscription-query-base)
+Return the number of subscribers currently registered to the application.
+
+  Endpoint  POST https://api.ideamart.io/subscription/query-base
+
+  Request parameters
+    applicationId   string   required
+      Application ID as received when provisioned.
+    password        string   required
+      Password as received when provisioned.
+
+  Response fields
+    baseSize        Current subscriber base size. Arrives as a string — coerce before arithmetic.
+    ...
+```
+
+| Command | Answers |
+|---|---|
+| `list [category]` | What services exist? |
+| `show <id>` | What exactly does this call take and return? |
+| `search "<query>"` | Which service does the thing I want? |
+| `curl <id> [k=v]` | Give me a valid, runnable request. |
+| `validate <id> '<json>'` | Is this payload correct? |
+| `code <statusCode>` | What does this error mean, and what do I do? |
+| `diagnose "<symptom>"` | Why is this not working? |
+| `practices [severity]` | What must I not get wrong? |
+| `checklist` | Am I ready for production? |
+| `reference <doc>` | Show me the full guide. |
+| `platform` | Base URLs, operators, conventions. |
+
+Add `--json` to any command for machine-readable output. Agents that cannot run commands read
+the catalog JSON directly — same data.
+
+It catches the real mistakes, not just missing fields:
+
+```bash
+$ node tools/ideamart.mjs validate sms-send '{"message":"hi","destinationAddresses":"tel:94771234567"}'
+
+  ✗ 3 error(s)  against sms-send
+    ✗ Missing required field "applicationId" — Application ID as given when provisioned.
+    ✗ Missing required field "password" — Password given when provisioned.
+    ✗ "destinationAddresses" must be an ARRAY, got string. This is the most common Ideamart integration bug.
+```
+
+And it turns a symptom into a fix:
+
+```bash
+$ node tools/ideamart.mjs diagnose "works locally, fails in production"
+
+  Likely cause
+  The deployed server's egress IP is not whitelisted, or secrets are not set in the host environment.
+
+  Fix
+  Run curl -4 https://myip.ideamart.io ON THE DEPLOYED SERVER and add that IP to
+  Allowed Host Addresses. Confirm IDEAMART_APP_ID and IDEAMART_PASSWORD are set in
+  the host's secret manager.
 ```
 
 ---
 
-## What's inside
+## Architecture it steers agents toward
 
-```
-SKILL.md                     Claude Code / Agent SDK entry point (with skill frontmatter)
-AGENTS.md                    Portable entry point — Cursor, Windsurf, Codex, Cline, Aider…
-.cursor/rules/ideamart.mdc   Cursor rule
-.github/copilot-instructions.md
-references/
-  01-getting-started.md      Account, provisioning, credentials, environments, first call
-  02-sms.md                  Send / receive / delivery reports, full parameter tables
-  03-ussd.md                 Session model, ussdOperation state machine, menu design
-  04-subscription.md         Register, unregister, status, base size, notifications, OTP
-  05-caas.md                 Direct debit, balance query, idempotency, reconciliation
-  06-lbs-ivr.md              LBS full spec; IVR status and extension pattern
-  07-callbacks.md            All five inbound webhooks — contract, security, idempotency
-  08-status-codes.md         Complete official code list + handling classes
-  09-security-best-practices.md  Secrets, TLS, PII, consent, robustness
-  10-production-checklist.md Pre-go-live verification
-templates/
-  .env.example               Every variable, documented, placeholders only
-  typescript/
-    ideamart-config.ts       The only module that reads process.env
-    ideamart-types.ts        Request/response types for every service
-    ideamart-client.ts       Client: credentials, timeouts, retries, typed errors
-    callbacks-nextjs.ts      All five callback handlers
-    ussd-session.ts          Session store + menu tree + ASCII sanitiser
-scripts/
-  smoke-test.sh / .ps1       Verify credentials, whitelisting, every endpoint
-  test-callbacks.sh          Test your handlers with real payloads, no account needed
-```
+<p align="center">
+  <img src="assets/architecture.svg" width="860" alt="A browser or mobile client calls your backend; your backend holds the credentials and calls Ideamart over HTTPS from a static whitelisted IP; Ideamart reaches subscribers on Dialog, Hutch and Airtel and posts callbacks back to your backend. Credentials never cross the trust boundary to the client.">
+</p>
 
 ---
 
@@ -98,31 +224,44 @@ scripts/
 | Service | Operations |
 |---|---|
 | **SMS** | Send (MT), broadcast to base, receive (MO), delivery status reports |
-| **USSD** | Send screens (`mt-init` / `mt-cont` / `mt-fin`), receive input (`mo-init` / `mo-cont`), session handling |
-| **Subscription** | Register (opt-in), **unregister (opt-out)**, status, **query base size**, subscription notifications |
+| **USSD** | Send screens, receive input, the `mo-init`/`mo-cont`/`mt-init`/`mt-cont`/`mt-fin` state machine |
+| **Subscription** | Register (opt-in), **unregister (opt-out)**, status, **query base size**, notifications |
 | **OTP** | Request, verify, masked-MSISDN handoff |
 | **CaaS** | Direct debit, query balance, charging notifications, reconciliation |
 | **LBS** | Get location, QoS precedence rules, privacy handling |
 | **IVR** | Not publicly documented — documented as such, with an extension pattern |
 
-Plus the complete official status-code list, the five callback contracts, and the operational
-practices (secrets, TLS, consent, idempotency, retention) that keep an application approved.
+Plus the complete official status-code table, all five callback contracts, and the operational
+practices that keep an application approved.
+
+### Skills
+
+| Skill | Use it for |
+|---|---|
+| `ideamart` | General Ideamart work; the rules and the service map |
+| `ideamart-scaffold` | Starting a new integration |
+| `ideamart-callbacks` | Inbound webhooks |
+| `ideamart-review` | Auditing existing code |
+| `ideamart-debug` | A failing call or callback |
+| `ideamart-golive` | The pre-production checklist |
+| `ideamart-help` | Quick reference |
+
+On plugin-tier hosts these are also slash commands: `/ideamart`, `/ideamart-review`, and so on.
 
 ---
 
 ## What it actually changes
 
-Assistants writing Ideamart code without this reliably get the same things wrong. The skill
-targets each one:
+Nine mistakes agents make on this platform, and what each one costs:
 
-| Common mistake | Consequence |
+| Mistake | Consequence |
 |---|---|
-| `if (res.ok) return "sent"` | Ideamart returns **HTTP 200 for errors**. Failures reported as successes. |
+| `if (res.ok) return "sent"` | Ideamart returns **HTTP 200 for errors**. Every failure reported as a success. |
 | `destinationAddresses: "tel:94…"` | It is always an **array**. Sends fail. |
 | Hardcoded `applicationId` / `password` | A credential that can charge your subscribers, committed to git. |
 | `E1351` / `E1356` / `E1379` treated as failures | Working flows reported as broken; charges repeated. |
 | Debit retried with a fresh `externalTrxId` | **Double-charges a real person.** |
-| Self-generated USSD `sessionId` | Sessions orphan; the user sees nothing. |
+| Self-generated USSD `sessionId` | Sessions orphan; the user's screen goes blank. |
 | USSD sessions in an in-process `Map` | Works in dev, breaks the moment you scale. |
 | Work before acknowledging a callback | Sessions time out; duplicates pile up. |
 | `rejectUnauthorized: false` shipped | Your credentials become interceptable. |
@@ -134,7 +273,7 @@ targets each one:
 ```bash
 # 1. Configure
 cp templates/.env.example .env
-$EDITOR .env                       # add IDEAMART_APP_ID and IDEAMART_PASSWORD
+$EDITOR .env                       # IDEAMART_APP_ID and IDEAMART_PASSWORD
 
 # 2. Confirm your egress IP is whitelisted — run this ON THE SERVER
 curl -4 https://myip.ideamart.io   # add the result to Allowed Host Addresses in the portal
@@ -142,47 +281,87 @@ curl -4 https://myip.ideamart.io   # add the result to Allowed Host Addresses in
 # 3. Verify connectivity and credentials
 ./scripts/smoke-test.sh            # Windows: .\scripts\smoke-test.ps1
 
-# 4. Test your callback handlers (no Ideamart account needed)
+# 4. Test your callback handlers — no Ideamart account needed
 ./scripts/test-callbacks.sh http://localhost:3000
 ```
 
-Then ask your assistant something like:
+Then ask your agent:
 
 > Add Ideamart subscription and SMS to this app — users opt in by SMS keyword, get a welcome
 > message, and can text STOP to unsubscribe.
 
 ---
 
-## Sources
+## What's inside
 
-Everything is derived from the official documentation at
-[docs.ideamart.io](https://docs.ideamart.io) — SMS, USSD, Subscription, OTP, Charging, LBS and
-Response Codes — plus the IdeaPro provisioning guides, and verified against a working
-integration.
-
-Where the official documentation is internally inconsistent (the delivery-report timestamp
-format, the LBS sample's latitude/longitude ordering, `action` as string vs number), the skill
-says so and tells the agent to handle both rather than picking one silently.
-
-Ideamart evolves. Re-check [docs.ideamart.io](https://docs.ideamart.io) for anything
-security- or money-critical, and contact support to confirm what your application is
-provisioned for.
-
-## Support
-
-- Email — `info@ideamart.io`
-- WhatsApp — +94767412345
-
-Quote your `requestId` / `externalTrxId` / `sessionId` and the `statusCode` when you contact
-them — that is what they trace with.
-
-## Contributing
-
-Corrections welcome, especially: new endpoints, changed parameters, IVR specifications when
-published, and per-operator differences between Dialog, Hutch and Airtel. Cite the
-documentation page or the observed response for anything factual.
+```
+SKILL.md · AGENTS.md              Entry points (Claude Code / everyone else)
+catalog/ideamart-api.json         The whole contract as structured data
+tools/ideamart.mjs                Offline CLI over the catalog
+references/                       10 guides: per-service, callbacks, codes, security, go-live
+templates/                        .env.example + working TypeScript (config, client, types,
+                                  callback handlers, USSD session store)
+skills/ · commands/               7 task skills and their slash commands
+scripts/                          Smoke tests (bash + PowerShell), callback tests, rule sync
+docs/agent-support.md             Which agent reads which file
+```
 
 ---
 
-*Not an official Ideamart product. Verify anything security- or billing-critical against the
-official documentation before going live.*
+## Development
+
+```bash
+npm test                             # catalog + tooling tests
+node scripts/sync-rules.mjs --check  # agent rule copies in sync with AGENTS.md
+node scripts/sync-rules.mjs          # regenerate them
+```
+
+`AGENTS.md` is the single source for every agent rule file; the seven copies are generated and
+CI fails if they drift. The test suite verifies that every referenced status code exists, every
+parameter is fully specified, every documented sample validates against its own schema, and no
+credential-shaped string is committed.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Corrections to the API contract are the most valuable
+contribution — cite the docs page or paste the observed response.
+
+---
+
+## Sources and honesty
+
+Everything derives from the official documentation at
+[docs.ideamart.io](https://docs.ideamart.io) — SMS, USSD, Subscription, OTP, Charging, LBS and
+Response Codes — plus the IdeaPro provisioning guides, verified against a working integration.
+
+Where the official documentation is internally inconsistent, the skill says so and tells the
+agent to handle both cases rather than silently picking one:
+
+- the delivery-report timestamp is documented as `yyMMddHHmm` but sampled as `yyyyMMddHHmmss`
+- the LBS sample's latitude and longitude values appear transposed for Sri Lanka
+- `action` is documented as a string but accepted as a number
+- the balance-query sample omits the `tel:` prefix every other service requires
+
+Ideamart evolves. Re-check the official docs for anything security- or money-critical, and
+confirm with support what your application is actually provisioned for.
+
+## Support
+
+- **Email** — `info@ideamart.io`
+- **WhatsApp** — +94767412345
+
+Quote your `requestId` / `externalTrxId` / `sessionId` and the `statusCode` — that is what
+support traces with.
+
+## Security
+
+No secrets in this repo; every credential is a placeholder and CI enforces it. The CLI makes
+no network calls and never reads your credentials. See [SECURITY.md](SECURITY.md), and read
+`scripts/smoke-test.*` before running it — `--with-charge` moves real money.
+
+## License
+
+[MIT](LICENSE).
+
+---
+
+<sub>Not an official Ideamart or Dialog Axiata product. Verify anything security- or
+billing-critical against the official documentation before going live.</sub>

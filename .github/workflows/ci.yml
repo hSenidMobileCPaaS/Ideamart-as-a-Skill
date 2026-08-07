@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Catalog and tooling tests
+        run: node --test tests/*.test.js
+
+  consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Agent rule copies are in sync with AGENTS.md
+        run: node scripts/sync-rules.mjs --check
+      - name: Catalog is valid JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('catalog/ideamart-api.json','utf8'))"
+      - name: Manifests are valid JSON
+        run: |
+          for f in .claude-plugin/*.json .codex-plugin/*.json .qoder-plugin/*.json gemini-extension.json opencode.json package.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" || exit 1
+          done
+      - name: Shell scripts parse
+        run: bash -n scripts/smoke-test.sh && bash -n scripts/test-callbacks.sh
+      - name: CLI responds
+        run: |
+          node tools/ideamart.mjs list --json > /dev/null
+          node tools/ideamart.mjs show sms-send --json > /dev/null
+          node tools/ideamart.mjs code E1303 --json > /dev/null
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No credential-shaped strings committed
+        run: |
+          if grep -rInE '"password"[[:space:]]*:[[:space:]]*"[0-9a-f]{16,}"' --exclude-dir=.git .; then
+            echo "::error::A credential-shaped password value is committed."
+            exit 1
+          fi
+          if grep -rIn 'IDEAMART_PASSWORD=' --exclude-dir=.git --exclude=.env.example . | grep -vE '=(\s*$|replace-me|\$)'; then
+            echo "::error::A non-placeholder IDEAMART_PASSWORD is committed."
+            exit 1
+          fi
+          echo "No credentials found."

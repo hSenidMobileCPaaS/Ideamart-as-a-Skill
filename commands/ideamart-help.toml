@@ -1,0 +1,2 @@
+description = "Quick reference for the Ideamart skill"
+prompt = "Show the Ideamart skill quick reference from the ideamart-help skill: the available commands, the services covered, and which reference document covers what."

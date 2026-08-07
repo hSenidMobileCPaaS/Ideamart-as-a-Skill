@@ -1,0 +1,11 @@
+{
+  "name": "ideamart",
+  "version": "1.0.0",
+  "description": "Build correct Ideamart integrations — SMS, USSD, Subscription, OTP, CaaS charging and LBS on Dialog Axiata's Sri Lankan telco platform.",
+  "author": { "name": "Ideamart Skill contributors" },
+  "homepage": "https://github.com/OWNER/IdeamartSkillForAgents",
+  "license": "MIT",
+  "keywords": ["ideamart", "telco", "sms", "ussd", "subscription", "caas", "sri-lanka"],
+  "skills": "./skills/",
+  "commands": "./commands/"
+}

@@ -1,0 +1,2 @@
+description = "Review Ideamart integration code for money, credential and compliance bugs"
+prompt = "Review this project's Ideamart integration using the ideamart-review skill. Run `node tools/ideamart.mjs practices` and check every one against the code. Report findings with file:line, most severe first, each with the evidence and the specific fix. Finish with a plain verdict on whether this is safe to put in front of real subscribers."
