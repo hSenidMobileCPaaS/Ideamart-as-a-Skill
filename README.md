@@ -171,7 +171,7 @@ provisioned for.
 ## Support
 
 - Email — `info@ideamart.io`
-- Hotline — 0773054056
+- WhatsApp — +94767412345
 
 Quote your `requestId` / `externalTrxId` / `sessionId` and the `statusCode` when you contact
 them — that is what they trace with.

@@ -269,7 +269,7 @@ POST /subscription/otp/request
 {
   "applicationId": "APP_001100",
   "password": "…",
-  "subscriberId": "tel:94777123123",
+  "subscriberId": "tel:94771234567",
   "applicationHash": "y3b84346f63899a",
   "applicationMetaData": {
     "client": "MOBILEAPP",

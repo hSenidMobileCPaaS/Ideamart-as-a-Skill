@@ -171,8 +171,8 @@ export const EXAMPLE_MENU: MenuTree = {
     id: "support",
     header: "Support",
     options: [
-      { key: "1", label: "Call us", type: "end", message: "Call 0773054056" },
-      { key: "2", label: "SMS us", type: "end", message: "SMS HELP to 77000" },
+      { key: "1", label: "Call us", type: "end", message: "Call our support line" },
+      { key: "2", label: "SMS us", type: "end", message: "SMS HELP to our shortcode" },
       { key: "0", label: "Exit", type: "end", message: "Thank you." },
     ],
   },

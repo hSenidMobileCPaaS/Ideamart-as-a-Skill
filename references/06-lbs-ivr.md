@@ -154,7 +154,7 @@ Do not invent endpoints, parameter names or status codes for IVR. If a user asks
 
 1. Tell them it is not in the public developer documentation.
 2. Point them at support to ask whether voice/IVR is available for their operator and account:
-   `info@ideamart.io`, hotline 0773054056.
+   `info@ideamart.io`, WhatsApp +94767412345.
 3. Offer the alternative that usually solves the real requirement: **USSD** covers interactive
    menus on any handset without needing voice, and **SMS** covers notification delivery.
 

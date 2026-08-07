@@ -44,7 +44,7 @@ Content-Type: application/json
   "applicationId": "APP_000017",
   "password": "…",
   "externalTrxId": "12345678901234567890123456789012",
-  "subscriberId": "tel:94776351232",
+  "subscriberId": "tel:94771234567",
   "accountId": "123456",
   "paymentInstrument": "MobileAccount",
   "currency": "LKR",
@@ -151,7 +151,7 @@ Content-Type: application/json
 {
   "applicationId": "APP_000018",
   "password": "…",
-  "subscriberId": "94776351232",
+  "subscriberId": "94771234567",
   "accountId": "12345",
   "currency": "LKR"
 }

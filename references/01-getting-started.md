@@ -91,7 +91,7 @@ Per operator, per API, you configure the settings the platform needs — most im
 
 For SMS you additionally configure:
 
-- **Shortcode** — the number users send SMS to (e.g. `77000`).
+- **Shortcode** — the short number users send SMS to, allocated to you during provisioning.
 - **Keyword** — the unique word that routes an SMS to *your* app. A user texts
   `KEYWORD <anything>` to the shortcode.
 - **MO enabled/disabled** — turn MO off if the service never receives user SMS.
@@ -169,7 +169,7 @@ More smoke tests: [scripts/smoke-test.sh](../scripts/smoke-test.sh).
 ## Support
 
 - Email: `info@ideamart.io`
-- Hotline: 0773054056
+- WhatsApp: +94767412345
 
 When you contact support, quote the `requestId`, `externalTrxId` or `sessionId` and the
 `statusCode` — that is what they trace with.
