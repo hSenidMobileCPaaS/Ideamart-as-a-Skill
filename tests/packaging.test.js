@@ -179,6 +179,38 @@ test("manifests point at the published repository", () => {
   assert.equal(readJson(".codex-plugin/plugin.json").repository, `https://github.com/${REPO}`);
 });
 
+test("the licence is proprietary and declared consistently everywhere", () => {
+  const licence = read("LICENSE");
+  assert.match(licence, /^PROPRIETARY SOFTWARE LICENCE/m);
+  assert.match(licence, /All rights reserved/);
+  assert.match(licence, /sole and\s+exclusive property of hSenid Mobile Solutions/);
+
+  // The restrictions the owner asked for must actually be in the text.
+  for (const restriction of [/modify/i, /distribut/i, /publish/i, /sublicense/i, /sell/i, /copy/i]) {
+    assert.match(licence, restriction, `LICENSE does not restrict: ${restriction}`);
+  }
+
+  // npm's convention for proprietary software.
+  assert.equal(readJson("package.json").license, "UNLICENSED");
+  assert.equal(readJson("package.json").private, true);
+  assert.equal(readJson(".claude-plugin/plugin.json").license, "UNLICENSED");
+  assert.equal(readJson(".codex-plugin/plugin.json").license, "UNLICENSED");
+
+  // No file may still advertise the old permissive terms.
+  for (const f of ["README.md", "SECURITY.md", "CONTRIBUTING.md", "plugin.yaml"]) {
+    assert.doesNotMatch(read(f), /\bMIT\b/, `${f} still refers to MIT`);
+  }
+});
+
+test("the licence permits the installation it documents", () => {
+  // The README tells users to git clone / plugin install. A licence forbidding
+  // all copying would forbid its own install instructions, so the grant has to
+  // cover the copying that using it requires.
+  const licence = read("LICENSE");
+  assert.match(licence, /copying strictly necessary/i);
+  assert.match(licence, /cloning this repository/i);
+});
+
 test("attribution names hSenid Mobile Solutions for Ideamart", () => {
   assert.match(read("LICENSE"), /hSenid Mobile Solutions \(Pvt\) Ltd/);
   assert.match(read("README.md"), /hSenid Mobile Solutions<\/strong> for <strong>Ideamart/);

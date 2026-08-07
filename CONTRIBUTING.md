@@ -1,42 +1,50 @@
 # Contributing
 
-Corrections are the most valuable contribution here. This skill is only useful if it is
-accurate, and Ideamart changes.
+This skill is proprietary software owned by hSenid Mobile Solutions (Pvt) Ltd. See
+[LICENSE](LICENSE).
 
-## What is most wanted
+**External pull requests and forks are not accepted.** The licence does not permit modifying
+or redistributing the skill, so there is no contribution path that would be lawful to merge
+from outside hSenid Mobile.
 
-- **Corrections to the API contract** — a parameter that is now required, a new enum value, a
-  changed endpoint. Cite the documentation page or paste the observed response.
-- **New services** — IVR when it is published, or anything else Ideamart adds.
-- **Status codes** seen in the wild that are not in the table.
+That does not mean feedback is unwelcome — it is the most valuable thing you can send.
+
+## What to report
+
+Open an issue. Accuracy reports are the highest-value contribution, because a wrong parameter
+name in this skill becomes a wrong parameter name in someone's production integration.
+
+- **The API contract has changed** — a parameter that is now required, a new enum value, a
+  changed endpoint. Include the docs page or the observed response.
+- **A status code** you have seen that is not in the table.
 - **Per-operator differences** between Dialog, Hutch and Airtel.
-- **Reference implementations** in other languages (Python, PHP, Java, Go).
+- **Bad guidance** — the skill led an agent to write incorrect, insecure or non-compliant code.
+- **Agent support** — a platform that should load the skill but does not.
+- **New services**, such as IVR once it is published.
 
 Anything factual needs a source: a link to <https://docs.ideamart.io>, or a real
-request/response pair with credentials redacted.
+request/response pair with credentials and MSISDNs redacted.
 
-## Never commit
+## Never include in an issue
 
-- A real `applicationId` or `password`. CI fails the build if it finds one, but do not rely on
-  that.
+- A real `applicationId` or `password`. If you have already pasted one anywhere, rotate it in
+  the portal first — see [SECURITY.md](SECURITY.md).
 - A real subscriber MSISDN. Use `tel:94771234567`.
-- Anything from a production log.
+- Anything copied from a production log.
 
-## The catalog is the source of truth
+## For hSenid Mobile maintainers
 
-`catalog/ideamart-api.json` drives the CLI, the tests, and much of the documentation. When you
-change a contract:
+The catalog is the source of truth. `catalog/ideamart-api.json` drives the CLI, the tests and
+much of the documentation. When a contract changes:
 
 1. Edit `catalog/ideamart-api.json`.
 2. Update the matching `references/*.md` so prose and data agree.
 3. Run `npm test` — the suite checks that every referenced status code exists, every parameter
-   is fully specified, every sample validates against its own schema, and every referenced file
-   is present.
+   is fully specified, every documented sample validates against its own schema, and every
+   referenced file is present.
 
-## Agent rule files are generated
-
-`AGENTS.md` is the single source. The Cursor, Windsurf, Cline, Kiro, Qoder, Copilot and
-`.agents` copies are generated from it:
+Agent rule files are generated. `AGENTS.md` is the single source; the Cursor, Windsurf, Cline,
+Kiro, Qoder, Copilot and `.agents` copies come from it:
 
 ```bash
 node scripts/sync-rules.mjs          # regenerate
@@ -45,16 +53,16 @@ node scripts/sync-rules.mjs --check  # CI check
 
 Edit `AGENTS.md`, never a generated copy. CI fails if they drift.
 
-## Before opening a pull request
+Before pushing:
 
 ```bash
-npm test                             # 32 catalog and tooling tests
+npm test                             # catalog, tooling and packaging tests
 node scripts/sync-rules.mjs --check  # rule copies in sync
 bash -n scripts/*.sh                 # shell scripts parse
 node tools/ideamart.mjs list         # CLI still works
 ```
 
-## Style
+### Style
 
 - Write for someone integrating at 2am with a failing call. Lead with what to do.
 - State the consequence, not just the rule — "never retry with a new `externalTrxId`" lands

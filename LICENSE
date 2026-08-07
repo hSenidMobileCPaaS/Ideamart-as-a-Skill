@@ -1,21 +1,97 @@
-MIT License
+PROPRIETARY SOFTWARE LICENCE
 
-Copyright (c) 2026 hSenid Mobile Solutions (Pvt) Ltd
+Ideamart as a Skill
+Copyright (c) 2026 hSenid Mobile Solutions (Pvt) Ltd. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software, together with all documentation, data files, templates, brand
+assets and other materials in this repository (the "Software"), is the sole and
+exclusive property of hSenid Mobile Solutions (Pvt) Ltd ("hSenid Mobile").
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The Software is licensed, not sold. No ownership passes to you.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+1. GRANT OF LICENCE
+
+   hSenid Mobile grants you a personal, non-exclusive, non-transferable,
+   non-sublicensable, revocable licence to USE the Software, in its unmodified
+   form, for the sole purpose of building and operating your own integrations
+   with the Ideamart platform.
+
+   That grant includes only the copying strictly necessary to exercise it:
+   downloading or cloning this repository, installing it into an AI coding
+   assistant, and holding it in memory or cache while it runs. No other
+   reproduction is permitted.
+
+2. RESTRICTIONS
+
+   Except where a right cannot lawfully be excluded, you may NOT:
+
+   a. copy, reproduce or store the Software beyond clause 1;
+   b. modify, adapt, translate or create derivative works of the Software;
+   c. publish, distribute, transmit, share, mirror, host or otherwise make the
+      Software available to any third party, in whole or in part;
+   d. sublicense, rent, lease, lend, assign or transfer the Software or any
+      rights in it;
+   e. sell, resell, or offer the Software for any consideration, or incorporate
+      it into a product or service that is sold or licensed to others;
+   f. fork this repository, or republish it under any name;
+   g. remove, obscure or alter any copyright, trademark or proprietary notice;
+   h. reverse engineer, decompile or disassemble the Software, or use it to
+      develop a competing or substantially similar product; or
+   i. use the Software other than for the purpose stated in clause 1.
+
+   Output you create with the Software — integration code written for your own
+   application — is yours. This licence governs the Software itself, not what
+   you build with it.
+
+3. OWNERSHIP AND TRADEMARKS
+
+   hSenid Mobile retains all right, title and interest in the Software,
+   including all intellectual property rights. All rights not expressly granted
+   in clause 1 are reserved.
+
+   "Ideamart", "hSenid Mobile", their logos, "ideas that reach" and
+   "co-creating the future" are trademarks of hSenid Mobile. Nothing in this
+   licence grants any right to use them. You may refer to Ideamart by name when
+   describing an integration you have built; you may not use the marks in your
+   own product, service or marketing, or in any way suggesting endorsement,
+   affiliation or sponsorship.
+
+4. TERM AND TERMINATION
+
+   This licence takes effect when you first access the Software and continues
+   until terminated. It terminates automatically and immediately on any breach
+   of clause 2, without notice. hSenid Mobile may also terminate it at any time
+   at its discretion. On termination you must stop using the Software and
+   destroy all copies in your possession.
+
+5. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, ACCURACY AND NON-INFRINGEMENT.
+
+   The Software describes a third-party telecommunications platform that
+   changes over time. hSenid Mobile does not warrant that the information in it
+   is current, complete or correct, and you remain responsible for verifying
+   anything security-critical or billing-critical against the official Ideamart
+   documentation before use in production.
+
+6. LIMITATION OF LIABILITY
+
+   TO THE MAXIMUM EXTENT PERMITTED BY LAW, HSENID MOBILE SHALL NOT BE LIABLE
+   FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR
+   OTHERWISE, ARISING FROM OR IN CONNECTION WITH THE SOFTWARE OR ITS USE,
+   INCLUDING WITHOUT LIMITATION ANY LOSS OF DATA, REVENUE OR PROFIT, ANY
+   ERRONEOUS CHARGE APPLIED TO AN END USER, OR ANY SUSPENSION OF A SERVICE
+   PROVIDER APPLICATION.
+
+7. GOVERNING LAW
+
+   This licence is governed by the laws of Sri Lanka, and the courts of Sri
+   Lanka have exclusive jurisdiction over any dispute arising from it.
+
+8. CONTACT
+
+   For permissions beyond this licence, including any request to modify,
+   redistribute or embed the Software, contact hSenid Mobile Solutions
+   (Pvt) Ltd at info@ideamart.io.

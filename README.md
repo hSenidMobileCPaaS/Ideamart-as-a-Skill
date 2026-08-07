@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/hSenidMobileCPaaS/Ideamart-as-a-Skill/ci.yml?branch=main&style=flat-square&label=CI&color=E11D74" alt="CI status"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/hSenidMobileCPaaS/Ideamart-as-a-Skill?style=flat-square&color=E11D74" alt="MIT license"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-proprietary-E11D74?style=flat-square" alt="Proprietary licence"></a>
   <img src="https://img.shields.io/badge/endpoints-14-E11D74?style=flat-square" alt="14 endpoints">
   <img src="https://img.shields.io/badge/callbacks-5-E11D74?style=flat-square" alt="5 callbacks">
   <img src="https://img.shields.io/badge/status%20codes-80%2B-E11D74?style=flat-square" alt="80+ status codes">
@@ -382,14 +382,25 @@ No secrets in this repo; every credential is a placeholder and CI enforces it. T
 no network calls and never reads your credentials. See [SECURITY.md](SECURITY.md), and read
 `scripts/smoke-test.*` before running it — `--with-charge` moves real money.
 
-## License
+## Licence
 
-[MIT](LICENSE). Copyright © 2026 hSenid Mobile Solutions (Pvt) Ltd.
+**Proprietary.** Copyright © 2026 hSenid Mobile Solutions (Pvt) Ltd. All rights reserved.
 
-The MIT grant covers the code and documentation. **Ideamart**, **hSenid Mobile**, and their
-logos are trademarks of hSenid Mobile Solutions (Pvt) Ltd and are not licensed under it — see
-[TRADEMARKS.md](TRADEMARKS.md). If you fork this repository, replace the brand assets with
-your own.
+This skill is the sole property of hSenid Mobile Solutions and is licensed for **use only**.
+See [LICENSE](LICENSE) for the full terms.
+
+| | |
+|---|---|
+| ✅ You may | Install it into your AI coding assistant and use it, unmodified, to build and operate your own Ideamart integrations. The integration code you produce is yours. |
+| ❌ You may not | Copy it beyond what installation requires, modify it, publish or redistribute it, mirror or fork it, sublicense it, sell it, or bundle it into anything you sell. |
+
+**Ideamart**, **hSenid Mobile**, their logos, "ideas that reach" and "co-creating the future"
+are trademarks of hSenid Mobile Solutions (Pvt) Ltd. You may refer to Ideamart by name when
+describing an integration you have built; you may not use the marks in your own product,
+service or marketing.
+
+For any permission beyond this — including modifying, redistributing or embedding the
+skill — contact `info@ideamart.io`.
 
 ---
 

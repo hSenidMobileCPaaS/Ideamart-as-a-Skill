@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Agent skill for building correct Ideamart integrations — SMS, USSD, Subscription, OTP, CaaS charging and LBS on Dialog Axiata's Sri Lankan telco platform.",
   "type": "module",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "keywords": [
     "ideamart",
     "dialog",
@@ -55,5 +55,6 @@
   "author": {
     "name": "hSenid Mobile Solutions",
     "url": "https://www.hsenidmobile.com"
-  }
+  },
+  "private": true
 }
