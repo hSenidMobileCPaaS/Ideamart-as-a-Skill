@@ -130,19 +130,38 @@ Ideamart does not publish a separate public sandbox host. Practical approach:
 
 | Stage | Target | How |
 |---|---|---|
-| Local development | Your own mock | Run a local mock that speaks the same JSON contract; point `IDEAMART_BASE_URL` at it |
+| Local development | Your own mock | Run a local mock that speaks the same JSON contract; point the service URLs at it |
 | Integration test | Real platform, Limited Production | Real credentials, whitelisted numbers only |
 | Production | Real platform, Production | Same code, different env values |
 
-The only thing that changes between them is environment variables:
+The only thing that changes between them is environment variables.
+
+### Configure one URL per provisioned service
+
+Your application can only call the APIs it was provisioned for. So the configuration is not a
+single base URL — it is **one endpoint variable per service you enabled**:
 
 ```bash
-IDEAMART_BASE_URL=http://localhost:4010        # local mock
-IDEAMART_BASE_URL=https://api.ideamart.io      # limited production and production
+IDEAMART_APP_ID=APP_001807
+IDEAMART_PASSWORD=…
+
+# Only the services enabled on this application:
+IDEAMART_SMS_SEND_URL=https://api.ideamart.io/sms/send
+IDEAMART_SUBSCRIPTION_SEND_URL=https://api.ideamart.io/subscription/send
+IDEAMART_SUBSCRIPTION_QUERY_BASE_URL=https://api.ideamart.io/subscription/query-base
 ```
 
-Never branch on `NODE_ENV` inside client code to pick a URL — read the URL from config, so
-the same binary runs everywhere. See
+An unset endpoint is meaningful: it means that API is not enabled, and your client should
+refuse to call it locally rather than send a request that fails `E1309` at the platform.
+Pointing one of them at a mock is the whole local-development switch:
+
+```bash
+IDEAMART_SMS_SEND_URL=http://localhost:4010/sms/send
+```
+
+Never branch on `NODE_ENV` inside client code to pick a URL, and never inline one. Read them
+from config so the same binary runs everywhere. See
+[templates/.env.example](../templates/.env.example) and
 [templates/typescript/ideamart-config.ts](../templates/typescript/ideamart-config.ts).
 
 ## Your first call

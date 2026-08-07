@@ -40,17 +40,22 @@ const ack = () => NextResponse.json(ACK);
 /* ── Shared guards ───────────────────────────────────────────────────────── */
 
 /**
- * Restrict to Ideamart's egress IPs. There is no request signature to verify,
- * so this is the strongest control available. Ask Ideamart support for the
- * current list and set IDEAMART_CALLBACK_ALLOWED_IPS.
+ * Restrict to Ideamart's egress IPs. Ideamart signs nothing, so there is no
+ * signature to verify — source IP is the strongest control available.
  *
- * Prefer enforcing this at the firewall / load balancer if you can.
+ * Ask Ideamart support for the current list and fill this in. Prefer enforcing
+ * it at the firewall or load balancer if you can; this is the fallback for when
+ * you cannot.
  */
+const IDEAMART_SOURCE_IPS: string[] = [
+  // "203.0.113.10",
+];
+
 function isAllowedSource(req: NextRequest): boolean {
-  if (config.callbacks.allowedIps.length === 0) return true; // dev: no list configured
+  if (IDEAMART_SOURCE_IPS.length === 0) return true; // not configured yet
   const forwarded = req.headers.get("x-forwarded-for") ?? "";
   const ip = forwarded.split(",")[0]?.trim();
-  return Boolean(ip) && config.callbacks.allowedIps.includes(ip);
+  return Boolean(ip) && IDEAMART_SOURCE_IPS.includes(ip);
 }
 
 /** Reject payloads addressed to a different application. Cheap noise filter. */
@@ -311,6 +316,12 @@ export async function subscriptionNotificationHandler(req: NextRequest) {
  * Your reconciliation channel. Every charge left in UNKNOWN after a timeout
  * gets resolved here. Idempotency is not optional — a duplicate that
  * double-counts revenue is a real bug with real consequences.
+ *
+ * ⚠  The Charging Notification URL is a documented provisioning field, but its
+ * PAYLOAD IS NOT PUBLISHED. The fields read below are inferred from the debit
+ * response and are not guaranteed. Before relying on this handler: log the raw
+ * body once in Limited Production, confirm the real field names, and adjust.
+ * Ask support (info@ideamart.io) for the payload specification.
  */
 export async function chargingNotificationHandler(req: NextRequest) {
   if (!isAllowedSource(req)) return ack();
@@ -375,6 +386,6 @@ async function handleJob(job: string, payload: unknown): Promise<void> {
  *   export const dynamic = "force-dynamic";
  *
  * Also make sure these routes are exempt from CSRF protection and from any
- * auth middleware — then rely on IDEAMART_CALLBACK_ALLOWED_IPS instead, or you
+ * auth middleware — then rely on the Ideamart source-IP allowlist instead, or you
  * have left an open endpoint.
  */

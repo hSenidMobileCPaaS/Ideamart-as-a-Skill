@@ -59,9 +59,14 @@ Content-Type: application/json
 | `externalTrxId` | **Your** transaction ID, mapping request to response | String | **M** |
 | `subscriberId` | MSISDN or hash key of the subscriber to charge | String | **M** |
 | `amount` | Amount to charge — sent as a **string** | String | **M** |
-| `paymentInstrument` | Account the debit is performed on, e.g. `MobileAccount` | String | **M** |
+| `paymentInstrument` | Account the debit is performed on, e.g. `MobileAccount` | String | M\* |
 | `accountId` | Account of the payment instrument | String | O |
 | `currency` | Currency of the amount. `LKR` for Sri Lanka; if not LKR it must be specified. | String | O |
+
+> \* The official parameter table marks `paymentInstrument` mandatory, but the documented
+> sample request omits it, and verified working calls omit it too. Treat it as optional unless
+> your provisioning requires it — and if a debit fails with a charging error, adding it is
+> worth trying.
 
 ### Response
 
@@ -188,9 +193,9 @@ Notes:
   for equality. Use a decimal type for money.
 - A balance check is **advisory, not a reservation**. The balance can change between the query
   and the debit. Always handle `E1378` on the debit regardless of what the query said.
-- Gate the call on a config flag (`IDEAMART_BALANCE_QUERY_ENABLED`) that mirrors your
-  provisioning. If the feature is not enabled for your app, skip the call rather than letting
-  it fail on every charge attempt.
+- Leaving `IDEAMART_CAAS_BALANCE_URL` unset is how you disable this on an application without
+  the toggle — the client then refuses the call locally instead of failing on every charge
+  attempt.
 
 ---
 
@@ -200,13 +205,22 @@ Configured during provisioning as the **Charging Notification URL**. The platfor
 report for every executed charging request, giving you a track record independent of your own
 response handling.
 
-Treat it as the **reconciliation channel**:
+> **The payload schema is not published.** `docs.ideamart.io` documents the Charging
+> Notification URL as a provisioning field and states its purpose, but never specifies the
+> body. Do not assume field names — not even the ones that appear in the debit response.
+>
+> Before you rely on this callback: stand the endpoint up, log the raw body once in Limited
+> Production, and write the handler against what actually arrives. Ask support
+> (`info@ideamart.io`) for the specification.
 
-- Match on `externalTrxId` / `internalTrxId`.
+Its documented purpose makes it your **reconciliation channel**:
+
 - Use it to resolve every charge your code left in `UNKNOWN` after a timeout.
+- Match on whatever transaction identifier the real payload carries — `externalTrxId` is the
+  one you control, so it is the natural key if present.
 - Handle duplicates idempotently — a repeat notification for an already-`CHARGED` transaction
   must not double-count revenue.
-- Respond `{"statusCode":"S1000","statusDetail":"Success"}` promptly.
+- Respond `{"statusCode":"S1000","statusDetail":"Success"}` promptly, as with every callback.
 
 See [07-callbacks.md](07-callbacks.md).
 

@@ -14,6 +14,10 @@ you never learn that a subscriber left or a charge failed.
 | **Subscription Notification** | A subscription is created or removed, by anyone | Subscription API settings | [04-subscription.md](04-subscription.md) |
 | **Charging Notification** | A charging request completes | CaaS *Charging Notification URL* | [05-caas.md](05-caas.md) |
 
+> Four of these five have a published payload. **The charging notification does not** — the URL
+> is a documented provisioning field, but its body is not specified anywhere. Log the raw body
+> once in Limited Production and write that handler against what actually arrives.
+
 ## The contract — same for all of them
 
 **In:** `POST`, `Content-Type: application/json`, a flat JSON object containing your
@@ -60,7 +64,7 @@ Every callback can arrive more than once. Deduplicate on the natural key:
 | Delivery report | `requestId` + `deliveryStatus` |
 | USSD | `requestId` |
 | Subscription notification | `subscriberId` + `status` + `timeStamp` |
-| Charging notification | `externalTrxId` / `internalTrxId` |
+| Charging notification | whatever transaction id the real payload carries — confirm it first |
 
 A duplicate charging notification that double-counts revenue is a real bug with real
 consequences. Design for redelivery from the start.
@@ -75,7 +79,7 @@ post to it.
 - **Verify `applicationId` matches yours.** Cheap, and it filters noise immediately.
 - **Restrict by source IP** at the firewall, load balancer or middleware, to the Ideamart
   platform's egress ranges — ask support for the current list. This is the strongest control
-  available, because there is no signature to verify.
+  available, because Ideamart signs nothing and there is no signature to verify.
 - **Never treat a callback as authorisation.** A `subscription-notification` claiming a user
   registered must not, by itself, unlock a paid feature — reconcile against your own state.
 - **Never echo request content back** into an SMS or USSD screen without sanitising. That is

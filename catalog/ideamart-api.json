@@ -20,7 +20,7 @@
     "alias": "https://api.dialog.lk",
     "lbs": "https://api.dialog.lk/lbs/locate",
     "myIp": "https://myip.ideamart.io",
-    "envVar": "IDEAMART_BASE_URL"
+    "configuration": "Configure one URL per provisioned service (IDEAMART_SMS_SEND_URL, IDEAMART_USSD_SEND_URL, …). An unset endpoint means that API is not enabled on the application, and the client should refuse to call it rather than fail with E1309 at the platform. See templates/.env.example."
   },
   "conventions": {
     "method": "POST",
@@ -325,7 +325,7 @@
         { "name": "externalTrxId", "type": "string", "required": true, "description": "Your transaction ID, mapping request to response. Max 32 characters. Persist BEFORE calling — it is the idempotency key." },
         { "name": "subscriberId", "type": "string", "required": true, "description": "MSISDN or hash key of the subscriber to charge." },
         { "name": "amount", "type": "string", "required": true, "description": "Amount to charge, sent as a string. Hold as a decimal type in your own code." },
-        { "name": "paymentInstrument", "type": "string", "required": true, "description": "The account the debit is performed on, e.g. MobileAccount." },
+        { "name": "paymentInstrument", "type": "string", "required": false, "description": "The account the debit is performed on, e.g. MobileAccount. The official parameter table marks this mandatory, but the documented sample request omits it and verified working calls omit it too — treat it as optional unless your provisioning requires it." },
         { "name": "accountId", "type": "string", "required": false, "description": "Account of the payment instrument." },
         { "name": "currency", "type": "string", "required": false, "description": "Currency of the amount. LKR for Sri Lanka." }
       ],
@@ -337,7 +337,7 @@
         { "name": "referenceId", "type": "string", "description": "8-digit number for the payment request, where an external charging menu is involved." },
         { "name": "timeStamp", "type": "string", "description": "ISO-8601 date/time of the transaction." }
       ],
-      "sampleRequest": { "applicationId": "APP_000017", "password": "…", "externalTrxId": "12345678901234567890123456789012", "subscriberId": "tel:94771234567", "accountId": "123456", "paymentInstrument": "MobileAccount", "currency": "LKR", "amount": "1" },
+      "sampleRequest": { "applicationId": "APP_000017", "password": "…", "externalTrxId": "12345678901234567890123456789012", "subscriberId": "tel:94771234567", "currency": "LKR", "amount": "1" },
       "sampleResponse": { "statusCode": "S1000", "timeStamp": "2012-07-30T12:48:10-0400", "statusDetail": "Success", "externalTrxId": "12345678901234567890123456789012", "internalTrxId": "321" },
       "statusCodes": ["S1000", "E1303", "E1313", "E1308", "E1328", "E1329", "E1330", "E1336", "E1337", "E1370", "E1371", "E1372", "E1373", "E1376", "E1378", "E1379", "E1380", "E1382", "E1404", "E1405", "E1406", "E1605", "E1606"],
       "benignCodes": ["E1379"],
@@ -530,24 +530,18 @@
       "direction": "inbound",
       "suggestedPath": "/api/ideamart/charging/notification",
       "configuredIn": "CaaS Charging Notification URL",
-      "summary": "Reports the outcome of every executed charging request.",
+      "summary": "Reports the outcome of every executed charging request. The URL is a documented provisioning field; its payload is NOT published.",
       "reference": "references/05-caas.md",
-      "dedupeKey": "externalTrxId",
-      "fields": [
-        { "name": "applicationId", "type": "string", "required": false, "description": "Your application ID." },
-        { "name": "externalTrxId", "type": "string", "required": false, "description": "Your transaction ID — the match key." },
-        { "name": "internalTrxId", "type": "string", "required": false, "description": "Payment gateway transaction ID." },
-        { "name": "subscriberId", "type": "string", "required": false, "description": "Subscriber charged, possibly masked." },
-        { "name": "amount", "type": "string", "required": false, "description": "Amount charged." },
-        { "name": "currency", "type": "string", "required": false, "description": "Currency of the amount." },
-        { "name": "statusCode", "type": "string", "required": false, "description": "Outcome of the charge." },
-        { "name": "statusDetail", "type": "string", "required": false, "description": "Human-readable outcome." },
-        { "name": "timeStamp", "type": "string", "required": false, "description": "When the charge completed." }
-      ],
-      "samplePayload": { "applicationId": "APP_000017", "externalTrxId": "abc123", "internalTrxId": "321", "subscriberId": "tel:94771234567", "amount": "6", "currency": "LKR", "statusCode": "S1000", "statusDetail": "Success", "timeStamp": "2012-07-30T12:48:10-0400" },
+      "payloadDocumented": false,
+      "dedupeKey": "externalTrxId (expected — confirm against a real payload)",
+      "fields": [],
+      "samplePayload": null,
       "rules": [
-        "This is your reconciliation channel — resolve every charge left UNKNOWN after a timeout here.",
-        "A duplicate that double-counts revenue is a real bug. Deduplicate on externalTrxId."
+        "The payload schema is not published at docs.ideamart.io. Do not assume field names.",
+        "Before relying on this callback, log the raw body once in Limited Production, confirm the real field names, then write the handler against what you observed.",
+        "Ask Ideamart support (info@ideamart.io) for the payload specification.",
+        "Its documented purpose is a track record of every executed charging request — treat it as the reconciliation channel for charges left unresolved after a timeout.",
+        "Whatever the field names turn out to be, deduplicate: a duplicate that double-counts revenue is a real bug."
       ]
     }
   ],

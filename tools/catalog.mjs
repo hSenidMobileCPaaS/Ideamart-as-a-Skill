@@ -217,7 +217,7 @@ export const SIGNATURES = [
   {
     when: /callback|webhook|notification.*(not|never)|no.*(callback|webhook)/,
     cause: "Callback URL is not publicly reachable, is wrong in the portal, is behind a WAF challenge or auth middleware, or your handler is not returning HTTP 200 with S1000.",
-    fix: "Verify the URL in the portal; confirm it is reachable over public HTTPS with a complete certificate chain; exempt it from CSRF and auth middleware and restrict by Ideamart source IP instead. Test locally with scripts/test-callbacks.sh.",
+    fix: "Verify the URL in the portal; confirm it is reachable over public HTTPS with a complete certificate chain; exempt it from CSRF and auth middleware, and restrict by Ideamart source IP instead. Test locally with scripts/test-callbacks.sh.",
   },
   {
     when: /nothing happens|gets nothing|no error|silent|not working.*(test|number)/,
@@ -242,7 +242,7 @@ export const SIGNATURES = [
   {
     when: /certificate|tls|ssl|self.?signed|unable to verify/,
     cause: "Ideamart serves an incomplete certificate chain, which strict clients reject.",
-    fix: "Supply the missing intermediate CA via IDEAMART_CA_BUNDLE_PATH. Do NOT disable verification — that exposes the credentials that can charge your subscribers.",
+    fix: "Supply the missing intermediate CA to the HTTPS agent. Do NOT disable verification — that exposes the credentials that can charge your subscribers.",
   },
   {
     when: /success.*but|reports success|no error but.*fail|always succeeds/,

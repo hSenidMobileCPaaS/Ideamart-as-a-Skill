@@ -211,6 +211,28 @@ $ node tools/ideamart.mjs diagnose "works locally, fails in production"
 
 ---
 
+## Configuration is two credentials and your enabled endpoints
+
+An Ideamart application can only call the APIs it was provisioned for, so the configuration
+mirrors that exactly — nothing else is environment-dependent:
+
+```bash
+IDEAMART_APP_ID=APP_XXXXXX
+IDEAMART_PASSWORD=replace-me
+
+# Uncomment only what is enabled on your application:
+#IDEAMART_SMS_SEND_URL=https://api.ideamart.io/sms/send
+#IDEAMART_SUBSCRIPTION_SEND_URL=https://api.ideamart.io/subscription/send
+#IDEAMART_CAAS_DEBIT_URL=https://api.ideamart.io/caas/direct/debit
+```
+
+An unset endpoint is meaningful: the client refuses the call locally, so you get a clear error
+naming the missing variable instead of `E1309` from the platform after a round trip. Pointing
+one at a mock is the whole local-development switch.
+
+Timeouts, encodings and retry policy are **not** configuration — they are constants in the
+client, because they are properties of the protocol rather than of your deployment.
+
 ## Architecture it steers agents toward
 
 <p align="center">
@@ -273,7 +295,8 @@ Nine mistakes agents make on this platform, and what each one costs:
 ```bash
 # 1. Configure
 cp templates/.env.example .env
-$EDITOR .env                       # IDEAMART_APP_ID and IDEAMART_PASSWORD
+$EDITOR .env                       # credentials, then uncomment ONLY the endpoints
+                                   # for the APIs enabled on your application
 
 # 2. Confirm your egress IP is whitelisted — run this ON THE SERVER
 curl -4 https://myip.ideamart.io   # add the result to Allowed Host Addresses in the portal

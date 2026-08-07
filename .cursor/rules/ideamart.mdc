@@ -88,8 +88,12 @@ to the project's stack rather than inventing a different structure.
 
 ## Service map
 
-Base URL from `IDEAMART_BASE_URL` (production `https://api.ideamart.io`). LBS is on
-`https://api.dialog.lk/lbs/locate`.
+Production host `https://api.ideamart.io`; LBS is on `https://api.dialog.lk/lbs/locate`.
+
+**Configure one environment variable per provisioned service**, not one base URL — an
+application can only call the APIs it was provisioned for. An unset endpoint means that API is
+not enabled, and the client should refuse to call it rather than fail with `E1309` at the
+platform. See [templates/.env.example](templates/.env.example).
 
 | Need | Endpoint |
 |---|---|

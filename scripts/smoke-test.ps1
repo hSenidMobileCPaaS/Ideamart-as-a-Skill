@@ -3,17 +3,19 @@
     Ideamart smoke tests (Windows / PowerShell).
 
 .DESCRIPTION
-    Verifies credentials, IP whitelisting, and every provisioned endpoint.
+    Verifies credentials, IP whitelisting, and every endpoint you have
+    configured.
+
+    Only the services with a URL set in your environment are tested — an unset
+    endpoint means that API is not enabled on your application, so there is
+    nothing to test. Configure them in .env; see templates/.env.example.
 
     RUN THIS FROM THE SERVER THAT WILL CALL IDEAMART. Running it from a laptop
-    tests the laptop's IP, which is not what you whitelisted — you will get
-    E1303 and learn nothing.
+    tests the laptop's IP, which is not what you whitelisted.
 
     Credentials come from the environment. Never paste them into this file.
 
 .EXAMPLE
-    $env:IDEAMART_APP_ID = "APP_001807"
-    $env:IDEAMART_PASSWORD = "..."
     .\scripts\smoke-test.ps1
 
 .EXAMPLE
@@ -27,7 +29,7 @@ param(
     [string]$TestMsisdn = $(if ($env:TEST_MSISDN) { $env:TEST_MSISDN } else { "94771234567" })
 )
 
-# Load .env if present (KEY=VALUE lines).
+# Load .env if present (KEY=VALUE lines, skipping comments).
 if (Test-Path .env) {
     Get-Content .env | ForEach-Object {
         if ($_ -match '^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$') {
@@ -39,11 +41,16 @@ if (Test-Path .env) {
 if (-not $env:IDEAMART_APP_ID)   { throw "Set IDEAMART_APP_ID (see templates/.env.example)" }
 if (-not $env:IDEAMART_PASSWORD) { throw "Set IDEAMART_PASSWORD (see templates/.env.example)" }
 
-$baseUrl = if ($env:IDEAMART_BASE_URL) { $env:IDEAMART_BASE_URL.TrimEnd('/') } else { "https://api.ideamart.io" }
-$lbsUrl  = if ($env:IDEAMART_LBS_URL)  { $env:IDEAMART_LBS_URL } else { "https://api.dialog.lk/lbs/locate" }
-
 $script:Pass = 0
 $script:Fail = 0
+$script:Skip = 0
+
+function Skip-Test {
+    param([string]$Name, [string]$Reason)
+    Write-Host ("{0,-28}" -f $Name) -NoNewline
+    Write-Host $Reason -ForegroundColor DarkGray
+    $script:Skip++
+}
 
 function Invoke-IdeamartCall {
     param([string]$Name, [string]$Url, [hashtable]$Body)
@@ -66,8 +73,7 @@ function Invoke-IdeamartCall {
         return
     }
 
-    $code = $response.statusCode
-    switch -Regex ($code) {
+    switch -Regex ($response.statusCode) {
         '^S1000$' { Write-Host "S1000 OK" -ForegroundColor Green; $script:Pass++ }
         '^E1303$' { Write-Host "E1303" -ForegroundColor Red -NoNewline
                     Write-Host "  This IP is not whitelisted. Run: curl -4 https://myip.ideamart.io" -ForegroundColor DarkGray
@@ -76,30 +82,25 @@ function Invoke-IdeamartCall {
                     Write-Host "  Auth failure - check IDEAMART_APP_ID / IDEAMART_PASSWORD" -ForegroundColor DarkGray
                     $script:Fail++ }
         '^E1309$' { Write-Host "E1309" -ForegroundColor Yellow -NoNewline
-                    Write-Host "  Service not provisioned for this app" -ForegroundColor DarkGray
+                    Write-Host "  Service not provisioned - remove this URL from your .env" -ForegroundColor DarkGray
+                    $script:Fail++ }
+        '^E1343$' { Write-Host "E1343" -ForegroundColor Yellow -NoNewline
+                    Write-Host "  $TestMsisdn is not in Whitelisted Numbers" -ForegroundColor DarkGray
                     $script:Fail++ }
         '^E1351$' { Write-Host "E1351  Already registered (benign)" -ForegroundColor Green; $script:Pass++ }
         '^E1356$' { Write-Host "E1356  Not registered (benign for unregister)" -ForegroundColor Green; $script:Pass++ }
-        default   { Write-Host "$code" -ForegroundColor Red -NoNewline
+        default   { Write-Host "$($response.statusCode)" -ForegroundColor Red -NoNewline
                     Write-Host "  $($response.statusDetail)" -ForegroundColor DarkGray
                     $script:Fail++ }
     }
 }
 
-function Skip-Test {
-    param([string]$Name, [string]$Reason)
-    Write-Host ("{0,-28}" -f $Name) -NoNewline
-    Write-Host $Reason -ForegroundColor DarkGray
-}
-
 Write-Host ""
 Write-Host "Ideamart smoke test"
-Write-Host "  base URL   $baseUrl"
 Write-Host "  app id     $($env:IDEAMART_APP_ID)"
 Write-Host "  password   ***redacted***"
 try {
-    $egress = (Invoke-RestMethod -Uri "https://myip.ideamart.io" -TimeoutSec 10)
-    Write-Host "  egress IP  $egress"
+    Write-Host "  egress IP  $(Invoke-RestMethod -Uri 'https://myip.ideamart.io' -TimeoutSec 10)"
 } catch {
     Write-Host "  egress IP  (could not determine)"
 }
@@ -107,52 +108,68 @@ Write-Host "             ^ this must be in your app's Allowed Host Addresses"
 Write-Host ""
 
 Write-Host "-- Subscription --------------------------------"
-Invoke-IdeamartCall "Query Base (base size)" "$baseUrl/subscription/query-base" @{}
-Invoke-IdeamartCall "Get Status"             "$baseUrl/subscription/getStatus"  @{ subscriberId = "tel:$TestMsisdn" }
-Invoke-IdeamartCall "Register (opt-in)"      "$baseUrl/subscription/send"       @{ version = "1.0"; action = "1"; subscriberId = "tel:$TestMsisdn" }
-Invoke-IdeamartCall "Unregister (opt-out)"   "$baseUrl/subscription/send"       @{ version = "1.0"; action = "0"; subscriberId = "tel:$TestMsisdn" }
+if ($env:IDEAMART_SUBSCRIPTION_QUERY_BASE_URL) {
+    Invoke-IdeamartCall "Query Base (base size)" $env:IDEAMART_SUBSCRIPTION_QUERY_BASE_URL @{}
+} else { Skip-Test "Query Base (base size)" "IDEAMART_SUBSCRIPTION_QUERY_BASE_URL not set" }
+
+if ($env:IDEAMART_SUBSCRIPTION_STATUS_URL) {
+    Invoke-IdeamartCall "Get Status" $env:IDEAMART_SUBSCRIPTION_STATUS_URL @{ subscriberId = "tel:$TestMsisdn" }
+} else { Skip-Test "Get Status" "IDEAMART_SUBSCRIPTION_STATUS_URL not set" }
+
+if ($env:IDEAMART_SUBSCRIPTION_SEND_URL) {
+    Invoke-IdeamartCall "Register (opt-in)"    $env:IDEAMART_SUBSCRIPTION_SEND_URL @{ version = "1.0"; action = "1"; subscriberId = "tel:$TestMsisdn" }
+    Invoke-IdeamartCall "Unregister (opt-out)" $env:IDEAMART_SUBSCRIPTION_SEND_URL @{ version = "1.0"; action = "0"; subscriberId = "tel:$TestMsisdn" }
+} else { Skip-Test "Register / Unregister" "IDEAMART_SUBSCRIPTION_SEND_URL not set" }
 
 Write-Host ""
 Write-Host "-- CaaS ----------------------------------------"
-if ($env:IDEAMART_BALANCE_QUERY_ENABLED -ne "false") {
-    Invoke-IdeamartCall "Query Balance" "$baseUrl/caas/balance/query" @{ subscriberId = "tel:$TestMsisdn"; currency = "LKR" }
-} else {
-    Skip-Test "Query Balance" "skipped (IDEAMART_BALANCE_QUERY_ENABLED=false)"
-}
+if ($env:IDEAMART_CAAS_BALANCE_URL) {
+    Invoke-IdeamartCall "Query Balance" $env:IDEAMART_CAAS_BALANCE_URL @{ subscriberId = "tel:$TestMsisdn"; currency = "LKR" }
+} else { Skip-Test "Query Balance" "IDEAMART_CAAS_BALANCE_URL not set" }
 
-if ($WithCharge) {
+if (-not $env:IDEAMART_CAAS_DEBIT_URL) {
+    Skip-Test "Direct Debit" "IDEAMART_CAAS_DEBIT_URL not set"
+} elseif (-not $WithCharge) {
+    Skip-Test "Direct Debit" "skipped (-WithCharge to run - charges real money)"
+} else {
     Write-Host "  !! This charges REAL MONEY from $TestMsisdn" -ForegroundColor Yellow
     $trxId = [guid]::NewGuid().ToString("N")
     Write-Host "  externalTrxId: $trxId  (persist this before charging, in real code)" -ForegroundColor DarkGray
-    Invoke-IdeamartCall "Direct Debit (LKR 1)" "$baseUrl/caas/direct/debit" @{
+    Invoke-IdeamartCall "Direct Debit (LKR 1)" $env:IDEAMART_CAAS_DEBIT_URL @{
         externalTrxId = $trxId; subscriberId = "tel:$TestMsisdn"; amount = "1"; currency = "LKR"
     }
-} else {
-    Skip-Test "Direct Debit" "skipped (-WithCharge to run - charges real money)"
 }
 
 Write-Host ""
 Write-Host "-- SMS -----------------------------------------"
-if ($WithSms) {
-    Invoke-IdeamartCall "SMS Send" "$baseUrl/sms/send" @{
+if (-not $env:IDEAMART_SMS_SEND_URL) {
+    Skip-Test "SMS Send" "IDEAMART_SMS_SEND_URL not set"
+} elseif (-not $WithSms) {
+    Skip-Test "SMS Send" "skipped (-WithSms to run - sends a real SMS)"
+} else {
+    Invoke-IdeamartCall "SMS Send" $env:IDEAMART_SMS_SEND_URL @{
         destinationAddresses = @("tel:$TestMsisdn"); message = "Ideamart smoke test"
     }
-} else {
-    Skip-Test "SMS Send" "skipped (-WithSms to run - sends a real SMS)"
 }
 
 Write-Host ""
 Write-Host "-- LBS -----------------------------------------"
-if ($WithLbs) {
-    Invoke-IdeamartCall "Locate" $lbsUrl @{ subscriberId = "tel:$TestMsisdn"; serviceType = "IMMEDIATE" }
-} else {
+if (-not $env:IDEAMART_LBS_URL) {
+    Skip-Test "Locate" "IDEAMART_LBS_URL not set"
+} elseif (-not $WithLbs) {
     Skip-Test "Locate" "skipped (-WithLbs to run - requires consent)"
+} else {
+    Invoke-IdeamartCall "Locate" $env:IDEAMART_LBS_URL @{ subscriberId = "tel:$TestMsisdn"; serviceType = "IMMEDIATE" }
 }
 
 Write-Host ""
 Write-Host "-----------------------------------------------"
 Write-Host "  passed $($script:Pass)" -ForegroundColor Green -NoNewline
-Write-Host "   failed $($script:Fail)" -ForegroundColor Red
+Write-Host "   failed $($script:Fail)" -ForegroundColor Red -NoNewline
+Write-Host "   skipped $($script:Skip)" -ForegroundColor DarkGray
+if ($script:Pass -eq 0 -and $script:Fail -eq 0) {
+    Write-Host "  Nothing ran - no service endpoints are configured in .env." -ForegroundColor Yellow
+}
 Write-Host ""
 
 if ($script:Fail -gt 0) { exit 1 }

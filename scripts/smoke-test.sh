@@ -2,17 +2,22 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Ideamart smoke tests
 #
-# Verifies credentials, IP whitelisting, and every provisioned endpoint.
+# Verifies credentials, IP whitelisting, and every endpoint you have configured.
+#
+# Only the services with a URL set in your environment are tested — an unset
+# endpoint means that API is not enabled on your application, so there is
+# nothing to test. Configure them in .env; see templates/.env.example.
 #
 # Usage:
 #   cp templates/.env.example .env && $EDITOR .env
 #   ./scripts/smoke-test.sh                 # safe tests only
 #   ./scripts/smoke-test.sh --with-sms      # also sends a real SMS
 #   ./scripts/smoke-test.sh --with-charge   # also charges REAL MONEY
+#   ./scripts/smoke-test.sh --with-lbs      # also locates a subscriber
 #
 # RUN THIS FROM THE SERVER THAT WILL CALL IDEAMART. Running it from a laptop
-# tests the laptop's IP, which is not what you whitelisted, and you will get
-# E1303 that tells you nothing useful.
+# tests the laptop's IP, which is not what you whitelisted, and E1303 will tell
+# you nothing useful.
 #
 # Credentials come from the environment. Never paste them into this file.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -22,8 +27,6 @@ set -uo pipefail
 
 : "${IDEAMART_APP_ID:?Set IDEAMART_APP_ID (see templates/.env.example)}"
 : "${IDEAMART_PASSWORD:?Set IDEAMART_PASSWORD (see templates/.env.example)}"
-BASE_URL="${IDEAMART_BASE_URL:-https://api.ideamart.io}"
-LBS_URL="${IDEAMART_LBS_URL:-https://api.dialog.lk/lbs/locate}"
 
 # A number in your app's Whitelisted Numbers list.
 TEST_MSISDN="${TEST_MSISDN:-94771234567}"
@@ -39,7 +42,9 @@ for arg in "$@"; do
 done
 
 GREEN=$'\033[0;32m'; RED=$'\033[0;31m'; YELLOW=$'\033[0;33m'; DIM=$'\033[2m'; NC=$'\033[0m'
-PASS=0; FAIL=0
+PASS=0; FAIL=0; SKIP=0
+
+skip() { printf '%-28s%s\n' "$1" "${DIM}$2${NC}"; SKIP=$((SKIP+1)); }
 
 # call <name> <url> <json-body>
 call() {
@@ -47,8 +52,7 @@ call() {
   printf '%-28s' "$name"
   local response
   response=$(curl -sS --max-time 20 -X POST "$url" \
-    -H 'Content-Type: application/json' \
-    --data "$body" 2>&1)
+    -H 'Content-Type: application/json' --data "$body" 2>&1)
 
   if [ -z "$response" ]; then
     echo "${RED}NO RESPONSE${NC}  (network, firewall, or TLS chain problem)"
@@ -62,7 +66,8 @@ call() {
     S1000) echo "${GREEN}S1000 OK${NC}"; PASS=$((PASS+1)) ;;
     E1303) echo "${RED}E1303${NC}  This IP is not whitelisted. Run: curl -4 https://myip.ideamart.io"; FAIL=$((FAIL+1)) ;;
     E1313) echo "${RED}E1313${NC}  Auth failure — check IDEAMART_APP_ID / IDEAMART_PASSWORD"; FAIL=$((FAIL+1)) ;;
-    E1309) echo "${YELLOW}E1309${NC}  Service not provisioned for this app"; FAIL=$((FAIL+1)) ;;
+    E1309) echo "${YELLOW}E1309${NC}  Service not provisioned — remove this URL from your .env"; FAIL=$((FAIL+1)) ;;
+    E1343) echo "${YELLOW}E1343${NC}  $TEST_MSISDN is not in Whitelisted Numbers"; FAIL=$((FAIL+1)) ;;
     E1351) echo "${GREEN}E1351${NC}  Already registered (benign)"; PASS=$((PASS+1)) ;;
     E1356) echo "${GREEN}E1356${NC}  Not registered (benign for unregister)"; PASS=$((PASS+1)) ;;
     "")    echo "${RED}NO statusCode${NC}"; echo "${DIM}  $response${NC}"; FAIL=$((FAIL+1)) ;;
@@ -74,70 +79,88 @@ creds="\"applicationId\":\"$IDEAMART_APP_ID\",\"password\":\"$IDEAMART_PASSWORD\
 
 echo
 echo "Ideamart smoke test"
-echo "  base URL   $BASE_URL"
 echo "  app id     $IDEAMART_APP_ID"
 echo "  password   ***redacted***"
 echo "  egress IP  $(curl -4 -sS --max-time 10 https://myip.ideamart.io 2>/dev/null || echo '(could not determine)')"
 echo "             ^ this must be in your app's Allowed Host Addresses"
 echo
 
-# ── Connectivity + credentials ──────────────────────────────────────────────
+# ── Subscription ────────────────────────────────────────────────────────────
 echo "── Subscription ────────────────────────────────"
-call "Query Base (base size)" "$BASE_URL/subscription/query-base" \
-  "{$creds}"
+if [ -n "${IDEAMART_SUBSCRIPTION_QUERY_BASE_URL:-}" ]; then
+  call "Query Base (base size)" "$IDEAMART_SUBSCRIPTION_QUERY_BASE_URL" "{$creds}"
+else
+  skip "Query Base (base size)" "IDEAMART_SUBSCRIPTION_QUERY_BASE_URL not set"
+fi
 
-call "Get Status" "$BASE_URL/subscription/getStatus" \
-  "{$creds,\"subscriberId\":\"tel:$TEST_MSISDN\"}"
+if [ -n "${IDEAMART_SUBSCRIPTION_STATUS_URL:-}" ]; then
+  call "Get Status" "$IDEAMART_SUBSCRIPTION_STATUS_URL" \
+    "{$creds,\"subscriberId\":\"tel:$TEST_MSISDN\"}"
+else
+  skip "Get Status" "IDEAMART_SUBSCRIPTION_STATUS_URL not set"
+fi
 
-call "Register (opt-in)" "$BASE_URL/subscription/send" \
-  "{$creds,\"version\":\"1.0\",\"action\":\"1\",\"subscriberId\":\"tel:$TEST_MSISDN\"}"
-
-call "Unregister (opt-out)" "$BASE_URL/subscription/send" \
-  "{$creds,\"version\":\"1.0\",\"action\":\"0\",\"subscriberId\":\"tel:$TEST_MSISDN\"}"
+if [ -n "${IDEAMART_SUBSCRIPTION_SEND_URL:-}" ]; then
+  call "Register (opt-in)" "$IDEAMART_SUBSCRIPTION_SEND_URL" \
+    "{$creds,\"version\":\"1.0\",\"action\":\"1\",\"subscriberId\":\"tel:$TEST_MSISDN\"}"
+  call "Unregister (opt-out)" "$IDEAMART_SUBSCRIPTION_SEND_URL" \
+    "{$creds,\"version\":\"1.0\",\"action\":\"0\",\"subscriberId\":\"tel:$TEST_MSISDN\"}"
+else
+  skip "Register / Unregister" "IDEAMART_SUBSCRIPTION_SEND_URL not set"
+fi
 
 # ── CaaS ────────────────────────────────────────────────────────────────────
 echo
 echo "── CaaS ────────────────────────────────────────"
-if [ "${IDEAMART_BALANCE_QUERY_ENABLED:-true}" = "true" ]; then
-  call "Query Balance" "$BASE_URL/caas/balance/query" \
+if [ -n "${IDEAMART_CAAS_BALANCE_URL:-}" ]; then
+  call "Query Balance" "$IDEAMART_CAAS_BALANCE_URL" \
     "{$creds,\"subscriberId\":\"tel:$TEST_MSISDN\",\"currency\":\"LKR\"}"
 else
-  printf '%-28s%s\n' "Query Balance" "${DIM}skipped (IDEAMART_BALANCE_QUERY_ENABLED=false)${NC}"
+  skip "Query Balance" "IDEAMART_CAAS_BALANCE_URL not set"
 fi
 
-if [ "$WITH_CHARGE" = true ]; then
+if [ -z "${IDEAMART_CAAS_DEBIT_URL:-}" ]; then
+  skip "Direct Debit" "IDEAMART_CAAS_DEBIT_URL not set"
+elif [ "$WITH_CHARGE" != true ]; then
+  skip "Direct Debit" "skipped (--with-charge to run — charges real money)"
+else
   echo "${YELLOW}  ⚠  This charges REAL MONEY from $TEST_MSISDN${NC}"
   TRX_ID=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
   echo "${DIM}  externalTrxId: $TRX_ID  (persist this before charging, in real code)${NC}"
-  call "Direct Debit (LKR 1)" "$BASE_URL/caas/direct/debit" \
+  call "Direct Debit (LKR 1)" "$IDEAMART_CAAS_DEBIT_URL" \
     "{$creds,\"externalTrxId\":\"$TRX_ID\",\"subscriberId\":\"tel:$TEST_MSISDN\",\"amount\":\"1\",\"currency\":\"LKR\"}"
-else
-  printf '%-28s%s\n' "Direct Debit" "${DIM}skipped (--with-charge to run — charges real money)${NC}"
 fi
 
 # ── SMS ─────────────────────────────────────────────────────────────────────
 echo
 echo "── SMS ─────────────────────────────────────────"
-if [ "$WITH_SMS" = true ]; then
-  call "SMS Send" "$BASE_URL/sms/send" \
-    "{$creds,\"destinationAddresses\":[\"tel:$TEST_MSISDN\"],\"message\":\"Ideamart smoke test\"}"
+if [ -z "${IDEAMART_SMS_SEND_URL:-}" ]; then
+  skip "SMS Send" "IDEAMART_SMS_SEND_URL not set"
+elif [ "$WITH_SMS" != true ]; then
+  skip "SMS Send" "skipped (--with-sms to run — sends a real SMS)"
 else
-  printf '%-28s%s\n' "SMS Send" "${DIM}skipped (--with-sms to run — sends a real SMS)${NC}"
+  call "SMS Send" "$IDEAMART_SMS_SEND_URL" \
+    "{$creds,\"destinationAddresses\":[\"tel:$TEST_MSISDN\"],\"message\":\"Ideamart smoke test\"}"
 fi
 
 # ── LBS ─────────────────────────────────────────────────────────────────────
 echo
 echo "── LBS ─────────────────────────────────────────"
-if [ "$WITH_LBS" = true ]; then
-  call "Locate" "$LBS_URL" \
-    "{$creds,\"subscriberId\":\"tel:$TEST_MSISDN\",\"serviceType\":\"IMMEDIATE\"}"
+if [ -z "${IDEAMART_LBS_URL:-}" ]; then
+  skip "Locate" "IDEAMART_LBS_URL not set"
+elif [ "$WITH_LBS" != true ]; then
+  skip "Locate" "skipped (--with-lbs to run — requires consent)"
 else
-  printf '%-28s%s\n' "Locate" "${DIM}skipped (--with-lbs to run — requires consent)${NC}"
+  call "Locate" "$IDEAMART_LBS_URL" \
+    "{$creds,\"subscriberId\":\"tel:$TEST_MSISDN\",\"serviceType\":\"IMMEDIATE\"}"
 fi
 
 # ── Summary ─────────────────────────────────────────────────────────────────
 echo
 echo "───────────────────────────────────────────────"
-echo "  ${GREEN}passed ${PASS}${NC}   ${RED}failed ${FAIL}${NC}"
+echo "  ${GREEN}passed ${PASS}${NC}   ${RED}failed ${FAIL}${NC}   ${DIM}skipped ${SKIP}${NC}"
+if [ "$PASS" -eq 0 ] && [ "$FAIL" -eq 0 ]; then
+  echo "  ${YELLOW}Nothing ran — no service endpoints are configured in .env.${NC}"
+fi
 echo
 [ "$FAIL" -eq 0 ] || exit 1

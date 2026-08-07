@@ -50,13 +50,28 @@ test("every outbound service requires applicationId and password", () => {
   }
 });
 
-test("every callback declares a dedupe key, fields and a sample payload", () => {
+test("every callback declares a dedupe key and a route", () => {
   assert.ok(catalog.callbacks.length >= 5, "expected at least five callbacks");
   for (const cb of catalog.callbacks) {
     assert.ok(cb.dedupeKey, `${cb.id} missing dedupeKey — callbacks must be idempotent`);
+    assert.ok(cb.suggestedPath?.startsWith("/"), `${cb.id} suggestedPath must be a route`);
+  }
+});
+
+test("documented callbacks carry fields and a sample; undocumented ones say so", () => {
+  for (const cb of catalog.callbacks) {
+    if (cb.payloadDocumented === false) {
+      // We must not invent a schema. Absence has to be explicit and explained.
+      assert.equal(cb.samplePayload, null, `${cb.id} claims undocumented but has a sample`);
+      assert.deepEqual(cb.fields, [], `${cb.id} claims undocumented but lists fields`);
+      assert.ok(
+        cb.rules.some((r) => /not published|not documented/i.test(r)),
+        `${cb.id} must state that its payload is not published`
+      );
+      continue;
+    }
     assert.ok(cb.fields?.length, `${cb.id} has no fields`);
     assert.ok(cb.samplePayload, `${cb.id} has no samplePayload`);
-    assert.ok(cb.suggestedPath?.startsWith("/"), `${cb.id} suggestedPath must be a route`);
   }
 });
 
@@ -284,6 +299,50 @@ test("diagnose degrades to search when nothing matches", () => {
 test("all ten reference documents exist", () => {
   const files = readdirSync(join(repoRoot, "references")).filter((f) => f.endsWith(".md"));
   assert.equal(files.length, 10, `expected 10 reference docs, found ${files.length}`);
+});
+
+/**
+ * The environment surface is deliberately tiny: two credentials, plus one URL
+ * per provisionable service. Anything else (timeouts, encodings, retry counts)
+ * belongs in code as a constant — it is a property of the protocol, not of the
+ * deployment. This test stops that surface creeping back.
+ */
+test("the env example exposes only credentials and per-service endpoints", () => {
+  const example = readFileSync(join(repoRoot, "templates", ".env.example"), "utf8");
+  const declared = [...example.matchAll(/^#?([A-Z][A-Z0-9_]*)=/gm)].map((m) => m[1]);
+
+  const allowed = new Set([
+    "IDEAMART_APP_ID",
+    "IDEAMART_PASSWORD",
+    "IDEAMART_SMS_SEND_URL",
+    "IDEAMART_USSD_SEND_URL",
+    "IDEAMART_SUBSCRIPTION_SEND_URL",
+    "IDEAMART_SUBSCRIPTION_STATUS_URL",
+    "IDEAMART_SUBSCRIPTION_QUERY_BASE_URL",
+    "IDEAMART_OTP_REQUEST_URL",
+    "IDEAMART_OTP_VERIFY_URL",
+    "IDEAMART_CAAS_DEBIT_URL",
+    "IDEAMART_CAAS_BALANCE_URL",
+    "IDEAMART_LBS_URL",
+  ]);
+
+  const unexpected = declared.filter((v) => !allowed.has(v));
+  assert.deepEqual(unexpected, [], `unexpected env vars in .env.example: ${unexpected.join(", ")}`);
+
+  for (const required of ["IDEAMART_APP_ID", "IDEAMART_PASSWORD"]) {
+    assert.ok(declared.includes(required), `.env.example is missing ${required}`);
+  }
+});
+
+test("every service endpoint variable maps to a real catalog service", () => {
+  const example = readFileSync(join(repoRoot, "templates", ".env.example"), "utf8");
+  const urls = [...example.matchAll(/^#?IDEAMART_\w+_URL=(\S+)/gm)].map((m) => m[1]);
+  const known = new Set(
+    catalog.services.map((s) => s.absoluteUrl || `${catalog.baseUrls.primary}${s.path}`)
+  );
+  for (const url of urls) {
+    assert.ok(known.has(url), `.env.example lists ${url}, which is not a catalog endpoint`);
+  }
 });
 
 test("no committed file contains the placeholder-free password pattern", () => {

@@ -1,15 +1,19 @@
 /**
  * Ideamart configuration — the ONLY module that reads process.env.
  *
- * Everything else imports `config` from here. That gives you one place to
- * audit for credential handling, and one place to change when the deployment
- * target changes.
+ * Two credentials, plus one URL per service you provisioned. Nothing else is
+ * configuration: timeouts and encodings are constants in the client, because
+ * they are properties of the protocol rather than of your deployment.
  *
- * Validation happens at import time, so a misconfigured deployment fails at
- * boot with a clear message instead of returning E1313 under load.
+ * An endpoint that is not set means that API is not enabled on your
+ * application. The client refuses to call it, so you get a clear local error
+ * instead of E1309 from the platform.
  *
- * SERVER-SIDE ONLY. Importing this into client-side code would bundle the
- * password into something a user can read.
+ * Validation runs at import time, so a misconfigured deployment fails at boot
+ * rather than under load.
+ *
+ * SERVER-SIDE ONLY. Importing this into client code would bundle the password
+ * into something a user can read.
  */
 
 function requireEnv(name: string): string {
@@ -24,125 +28,67 @@ function requireEnv(name: string): string {
   return value.trim();
 }
 
-function optionalEnv(name: string, fallback = ""): string {
-  return (process.env[name] ?? fallback).trim();
+/** An endpoint is optional: absent means that API is not provisioned. */
+function endpoint(name: string): string | undefined {
+  const value = process.env[name];
+  return value && value.trim() !== "" ? value.trim().replace(/\/+$/, "") : undefined;
 }
-
-function numberEnv(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) {
-    throw new Error(`[ideamart] ${name} must be a number, got "${raw}"`);
-  }
-  return parsed;
-}
-
-function boolEnv(name: string, fallback: boolean): boolean {
-  const raw = process.env[name];
-  if (raw === undefined || raw === "") return fallback;
-  return raw.trim().toLowerCase() === "true";
-}
-
-/* ── TLS ─────────────────────────────────────────────────────────────────── */
-
-const insecureTls =
-  optionalEnv("IDEAMART_INSECURE_TLS") === "yes-i-understand-the-risk";
-
-if (insecureTls && process.env.NODE_ENV === "production") {
-  throw new Error(
-    "[ideamart] IDEAMART_INSECURE_TLS must never be set in production. " +
-      "Disabling certificate verification exposes your applicationId and " +
-      "password to interception. Supply IDEAMART_CA_BUNDLE_PATH instead."
-  );
-}
-
-if (insecureTls) {
-  console.warn(
-    "[ideamart] TLS certificate verification is DISABLED. " +
-      "Development only — never deploy this."
-  );
-}
-
-/* ── Config ──────────────────────────────────────────────────────────────── */
 
 export const config = {
-  /** Credentials. Never log these. Never send them to a client. */
+  /** Never log these. Never send them to a client. */
   applicationId: requireEnv("IDEAMART_APP_ID"),
   password: requireEnv("IDEAMART_PASSWORD"),
 
-  /** Base URL — swap this to point at a local mock. */
-  baseUrl: optionalEnv("IDEAMART_BASE_URL", "https://api.ideamart.io").replace(
-    /\/+$/,
-    ""
-  ),
-
-  /** LBS is on a different host, so it is a full URL rather than a path. */
-  lbsUrl: optionalEnv("IDEAMART_LBS_URL", "https://api.dialog.lk/lbs/locate"),
-
-  apiVersion: optionalEnv("IDEAMART_API_VERSION", "1.0"),
-  timeoutMs: numberEnv("IDEAMART_TIMEOUT_MS", 15_000),
-  maxRetries: numberEnv("IDEAMART_MAX_RETRIES", 2),
-
-  sms: {
-    /** Must be a provisioned alias, or sends fail with E1331. */
-    sourceAddress: optionalEnv("IDEAMART_SMS_SOURCE_ADDRESS") || undefined,
-    /** "0" = no delivery report, "1" = request one. */
-    deliveryStatusRequest: optionalEnv("IDEAMART_SMS_DELIVERY_REPORT", "0"),
-  },
-
-  caas: {
-    /** Mirrors the "Enable Query Balance Requests" CaaS provisioning toggle. */
-    balanceQueryEnabled: boolEnv("IDEAMART_BALANCE_QUERY_ENABLED", true),
-  },
-
-  tls: {
-    caBundlePath: optionalEnv("IDEAMART_CA_BUNDLE_PATH") || undefined,
-    insecure: insecureTls,
-  },
-
-  callbacks: {
-    /** Ideamart egress IPs allowed to POST to your callback routes. */
-    allowedIps: optionalEnv("IDEAMART_CALLBACK_ALLOWED_IPS")
-      .split(",")
-      .map((ip) => ip.trim())
-      .filter(Boolean),
-  },
-
   /**
-   * Endpoint paths, relative to baseUrl.
-   *
-   * Adding a new Ideamart service means adding a line here and one wrapper
-   * method on the client — never a new HTTP call at a call site.
+   * Only the services enabled on your application. Point any of these at a
+   * local mock during development — that is the whole environment switch.
    */
   endpoints: {
-    smsSend: "/sms/send",
-    ussdSend: "/ussd/send",
-    subscriptionSend: "/subscription/send",
-    subscriptionStatus: "/subscription/getStatus",
-    subscriptionQueryBase: "/subscription/query-base",
-    otpRequest: "/subscription/otp/request",
-    otpVerify: "/subscription/otp/verify",
-    caasDirectDebit: "/caas/direct/debit",
-    caasBalanceQuery: "/caas/balance/query",
+    smsSend: endpoint("IDEAMART_SMS_SEND_URL"),
+    ussdSend: endpoint("IDEAMART_USSD_SEND_URL"),
+    subscriptionSend: endpoint("IDEAMART_SUBSCRIPTION_SEND_URL"),
+    subscriptionStatus: endpoint("IDEAMART_SUBSCRIPTION_STATUS_URL"),
+    subscriptionQueryBase: endpoint("IDEAMART_SUBSCRIPTION_QUERY_BASE_URL"),
+    otpRequest: endpoint("IDEAMART_OTP_REQUEST_URL"),
+    otpVerify: endpoint("IDEAMART_OTP_VERIFY_URL"),
+    caasDebit: endpoint("IDEAMART_CAAS_DEBIT_URL"),
+    caasBalance: endpoint("IDEAMART_CAAS_BALANCE_URL"),
+    lbsLocate: endpoint("IDEAMART_LBS_URL"),
   },
 } as const;
 
-export type IdeamartConfig = typeof config;
+export type ServiceName = keyof typeof config.endpoints;
 
 /**
- * Redacted view, safe to log at startup so you can confirm what the process
- * actually loaded without leaking the secret.
+ * Resolve an endpoint, or fail with a message that names the missing variable.
+ *
+ * This is the guard that keeps you from calling an API your application was
+ * never provisioned for.
  */
+export function requireEndpoint(service: ServiceName): string {
+  const url = config.endpoints[service];
+  if (!url) {
+    throw new Error(
+      `[ideamart] ${service} is not configured. Either the API is not enabled on ` +
+        `your application in IdeaPro, or its URL is missing from the environment. ` +
+        `See .env.example.`
+    );
+  }
+  return url;
+}
+
+/** Which services this deployment can actually call. Useful at startup. */
+export function enabledServices(): ServiceName[] {
+  return (Object.keys(config.endpoints) as ServiceName[]).filter(
+    (s) => config.endpoints[s] !== undefined
+  );
+}
+
+/** Redacted view, safe to log at startup to confirm what the process loaded. */
 export function describeConfig(): Record<string, unknown> {
   return {
     applicationId: config.applicationId,
     password: "***redacted***",
-    baseUrl: config.baseUrl,
-    apiVersion: config.apiVersion,
-    timeoutMs: config.timeoutMs,
-    maxRetries: config.maxRetries,
-    balanceQueryEnabled: config.caas.balanceQueryEnabled,
-    tlsInsecure: config.tls.insecure,
+    enabledServices: enabledServices(),
   };
 }

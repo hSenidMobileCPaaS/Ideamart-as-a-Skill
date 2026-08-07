@@ -8,7 +8,8 @@ Three distinct services, two directions:
 | **Receive** (MO — Mobile Originated) | User → app | Subscriber | Your MO callback URL |
 | **Delivery Status Report** | Platform → app | Platform | Your DLR callback URL |
 
-Base URL from `IDEAMART_BASE_URL` (production `https://api.ideamart.io`).
+Endpoint from `IDEAMART_SMS_SEND_URL` (production `https://api.ideamart.io/sms/send`). If that
+variable is unset, the SMS API is not enabled on your application.
 
 ---
 

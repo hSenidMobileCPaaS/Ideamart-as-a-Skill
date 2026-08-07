@@ -131,21 +131,20 @@ chain problem into a total compromise of the integration.
    commit it as a `.pem`, and pass it as `ca`. Validation stays fully on:
    ```ts
    const agent = new https.Agent({
-     ca: fs.readFileSync(config.caBundlePath),   // intermediate + root
+     ca: fs.readFileSync("./certs/ideamart-chain.pem"),   // intermediate + root
      keepAlive: true,
    });
    ```
 2. **Update the system trust store** on the host / in the container image, and let the default
    agent work.
 3. **Ask Ideamart support to fix the chain.** It is a server misconfiguration; report it.
-4. **If you must disable verification to unblock local development**, gate it behind an
-   explicit, loudly-named environment variable that is impossible to enable by accident, and
-   assert it can never be true in production:
+4. **If you must disable verification to unblock local development**, keep it a source-level
+   constant that is obvious in code review and impossible to switch on by deployment
+   configuration — never an environment variable, which is exactly the thing that gets copied
+   into production by accident:
    ```ts
-   const insecure = process.env.IDEAMART_INSECURE_TLS === "yes-i-understand-the-risk";
-   if (insecure && process.env.NODE_ENV === "production") {
-     throw new Error("IDEAMART_INSECURE_TLS must never be set in production");
-   }
+   // Development only. Never commit this as true.
+   const ALLOW_INSECURE_TLS = false;
    ```
 
 Never set `NODE_TLS_REJECT_UNAUTHORIZED=0` — that disables TLS validation for the entire

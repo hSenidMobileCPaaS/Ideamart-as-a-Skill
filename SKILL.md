@@ -134,8 +134,14 @@ user requests production approval.
 | Locate a subscriber | LBS Get Location | `POST https://api.dialog.lk/lbs/locate` | [06-lbs-ivr](references/06-lbs-ivr.md) |
 | Voice / IVR | Not in public docs — see extension pattern | — | [06-lbs-ivr](references/06-lbs-ivr.md) |
 
-Base URL for everything except LBS: `https://api.ideamart.io`
-(alias `https://api.dialog.lk`). Always read it from `IDEAMART_BASE_URL` — never inline it.
+Production host for everything except LBS: `https://api.ideamart.io` (alias
+`https://api.dialog.lk`).
+
+**Configure one environment variable per provisioned service** — `IDEAMART_SMS_SEND_URL`,
+`IDEAMART_USSD_SEND_URL`, and so on — never one shared base URL. An application can only call
+the APIs it was provisioned for, so an unset endpoint means that service is not enabled and
+the client should refuse to call it rather than fail with `E1309` at the platform. Never
+inline a URL. See [templates/.env.example](templates/.env.example).
 
 ---
 
