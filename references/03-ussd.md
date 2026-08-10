@@ -169,13 +169,16 @@ USSD screens are tiny and the input is a single keypress. Constraints:
 Keyed by `sessionId`, holding at minimum: current node, `sourceAddress`, created-at.
 
 - **TTL of ~2 minutes**, then evict. Sessions that are never closed must not accumulate.
-- **Must be shared across instances** if you run more than one process — an in-memory `Map`
-  breaks the moment you scale horizontally or deploy. Use Redis or equivalent in production.
+- **Must be shared across instances** if you run more than one process — an in-process store
+  (a JS `Map`, a Python `dict`, a Java `HashMap`, a Go `map`, a .NET `MemoryCache`) breaks the
+  moment you scale horizontally, add a worker, or deploy. Use Redis or equivalent in production.
 - Never store the raw MSISDN longer than the session needs it.
 
-A worked in-memory implementation (fine for development, explicitly not for multi-instance
-production) is in
-[templates/typescript/ussd-session.ts](../templates/typescript/ussd-session.ts).
+Worked in-memory implementations (fine for development, explicitly not for multi-instance
+production) are in [templates/typescript/ussd-session.ts](../templates/typescript/ussd-session.ts)
+and [templates/python/ussd_session.py](../templates/python/ussd_session.py); the Java, Go, PHP
+and C# callback templates each carry the same store behind an interface, ready to swap for
+Redis.
 
 ### Worked example
 

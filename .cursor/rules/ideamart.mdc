@@ -19,6 +19,11 @@ charging and location as JSON-over-HTTPS APIs.
 `tel:` MSISDN addressing, USSD menus, shortcode/keyword routing, subscriber base size,
 direct carrier billing, or telco SMS in Sri Lanka.**
 
+The platform is JSON over HTTPS, so **any language builds a complete integration** — write it
+in whatever the host project already uses. Reference implementations ship for TypeScript/Node,
+Python, Java, Go, PHP and C#; [references/11-any-stack.md](references/11-any-stack.md)
+specifies the same integration language-neutrally for anything else.
+
 ---
 
 ## Non-negotiable rules
@@ -59,8 +64,10 @@ node tools/ideamart.mjs reference <doc>              # print a reference documen
 node tools/ideamart.mjs platform                     # base URLs, operators, conventions
 ```
 
-Add `--json` to any command for machine-readable output. If you cannot run commands, read
-`catalog/ideamart-api.json` directly — it contains the same data.
+Add `--json` to any command for machine-readable output. If you cannot run commands — or Node
+is not installed — read `catalog/ideamart-api.json` directly; it is plain JSON with the same
+data. The CLI is a documentation reader, not part of the integration, and constrains nothing
+about the stack you build in.
 
 **Use them in this order:** `search` or `list` to find the service → `show` for the exact
 contract → write the code → `validate` the payload you generated → `code`/`diagnose` when
@@ -80,9 +87,11 @@ something fails.
 | Status codes and error handling | [references/08-status-codes.md](references/08-status-codes.md) |
 | Secrets, TLS, PII, consent | [references/09-security-best-practices.md](references/09-security-best-practices.md) |
 | Go-live checklist | [references/10-production-checklist.md](references/10-production-checklist.md) |
+| Building in a stack with no template | [references/11-any-stack.md](references/11-any-stack.md) |
 
-Working reference implementations in [templates/typescript/](templates/typescript/). Port them
-to the project's stack rather than inventing a different structure.
+Working reference implementations in [templates/](templates/README.md) for TypeScript/Node,
+Python, Java, Go, PHP and C#. Take the one matching the project's stack rather than inventing a
+different structure — and never introduce a new runtime to reach Ideamart.
 
 ---
 
@@ -130,8 +139,8 @@ Content-Type: application/json
 { "statusCode": "S1000", "statusDetail": "Success", "version": "1.0" }
 ```
 
-So: **one `post()` helper that injects credentials, plus thin typed wrappers per service.**
-Do not write bespoke fetch calls per endpoint.
+So: **one `post()` helper that injects credentials, plus thin wrappers per service.** Do not
+write bespoke HTTP calls per endpoint, in any language.
 
 **Addressing** — always `tel:`-prefixed, no `+`, no spaces:
 
@@ -147,7 +156,8 @@ Normalise in one helper. Never concatenate `tel:` inline.
 
 ## Mistakes to avoid
 
-- ❌ Checking `res.ok` / HTTP 200 as success — **Ideamart returns 200 for errors.** Branch on
+- ❌ Checking the HTTP status as success (`res.ok`, `raise_for_status()`,
+  `EnsureSuccessStatusCode()`, `http_errors`) — **Ideamart returns 200 for errors.** Branch on
   `statusCode`.
 - ❌ `destinationAddresses: "tel:94…"` — it is always an **array**.
 - ❌ Treating `E1351` (already registered) as a failure on Register — it is success.
@@ -156,11 +166,17 @@ Normalise in one helper. Never concatenate `tel:` inline.
 - ❌ Retrying a debit with a new `externalTrxId` after a timeout — double charge.
 - ❌ Generating your own USSD `sessionId` — echo the platform's.
 - ❌ Ending a USSD flow with `mt-cont` — terminal screens use `mt-fin`.
-- ❌ An in-memory USSD session `Map` in production — breaks across instances.
-- ❌ Doing work before acknowledging a callback — sessions time out in seconds.
-- ❌ `rejectUnauthorized: false` in shipped code — supply the intermediate CA instead.
-- ❌ `NEXT_PUBLIC_` / `VITE_` / `REACT_APP_` on any Ideamart variable — that ships the
-  password to the browser.
+- ❌ An in-process USSD session store (`Map`, `dict`, `HashMap`, package-level `map`) in
+  production — breaks across instances.
+- ❌ Doing work before acknowledging a callback — sessions time out in seconds. Use the stack's
+  real background mechanism, not a bare `await`.
+- ❌ Disabled TLS verification in shipped code — `rejectUnauthorized: false`, `verify=False`,
+  `InsecureSkipVerify`, `CURLOPT_SSL_VERIFYPEER => false`, a trust-all `TrustManager`. Supply
+  the intermediate CA instead.
+- ❌ `NEXT_PUBLIC_` / `VITE_` / `REACT_APP_` / `PUBLIC_` / `EXPO_PUBLIC_` on any Ideamart
+  variable, or serving it through a client-facing config endpoint — that ships the password to
+  the browser.
+- ❌ Standing up a Node sidecar (or any second runtime) to call Ideamart from a non-JS project.
 - ❌ Logging `password`, the OTP, `referenceNo`, or an unmasked `subscriberId`.
 - ❌ Inventing IVR endpoints — there is no public specification.
 
@@ -178,5 +194,6 @@ Normalise in one helper. Never concatenate `tel:` inline.
   deduplicate.
 - Log `requestId` / `sessionId` / `externalTrxId` / `statusCode`; mask subscriber addresses.
 - Mirror subscription state locally from notifications instead of polling `getStatus`.
-- Use a decimal type for money.
+- Use a decimal type for money — `BigDecimal`, `decimal.Decimal`, `decimal`, `bcmath`, a
+  decimal library, or integer minor units. Never a binary float.
 - Match the host project's existing stack, structure and conventions.

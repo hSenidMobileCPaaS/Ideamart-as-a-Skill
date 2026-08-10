@@ -376,7 +376,7 @@ function cmdReference() {
     const docs = [
       "01-getting-started", "02-sms", "03-ussd", "04-subscription", "05-caas",
       "06-lbs-ivr", "07-callbacks", "08-status-codes",
-      "09-security-best-practices", "10-production-checklist",
+      "09-security-best-practices", "10-production-checklist", "11-any-stack",
     ];
     return out({ documents: docs }, (d) => {
       console.log(`\n  ${bold("Reference documents")}\n`);

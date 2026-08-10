@@ -53,6 +53,13 @@ node scripts/sync-rules.mjs --check  # CI check
 
 Edit `AGENTS.md`, never a generated copy. CI fails if they drift.
 
+Templates are per-language ports of one specification. Adding a language means: a directory
+under `templates/` with config, client and callback handlers; the same `IDEAMART_*` variable
+names as every other port; a row in `templates/README.md` and in the shipped-templates table in
+`references/11-any-stack.md`; and an entry in `TEMPLATE_LANGUAGES` in
+`tests/packaging.test.js`, which enforces all of the above. Ideamart is JSON over HTTPS — no
+guidance in this repo may assume a particular runtime.
+
 Before pushing:
 
 ```bash

@@ -15,9 +15,10 @@ node tools/ideamart.mjs validate <id> '<payload>'
 
 ## Get the real error first
 
-Ideamart returns **HTTP 200 for failures**. If the code checks `res.ok`, it is swallowing the
-error. Log `statusCode` and `statusDetail` before investigating anything else — most
-"mysterious" Ideamart bugs are a clear error code that nothing was reading.
+Ideamart returns **HTTP 200 for failures**. If the code decides on the HTTP status — `res.ok`,
+`raise_for_status()`, `EnsureSuccessStatusCode()`, Guzzle's `http_errors`, a `2xx` check — it is
+swallowing the error. Log `statusCode` and `statusDetail` before investigating anything else —
+most "mysterious" Ideamart bugs are a clear error code that nothing was reading.
 
 ## Failure signatures
 
@@ -28,7 +29,7 @@ error. Log `statusCode` and `statusDetail` before investigating anything else �
 | One API returns `E1309`, others work | That API was not provisioned. A portal fix, not a code fix. |
 | Test number gets nothing, no error | The number is not in *Whitelisted Numbers* while the app is in Limited Production (`E1343`). |
 | Callbacks never arrive | URL not publicly reachable, wrong in the portal, a WAF challenge, auth middleware in front, or the handler is not returning 200 with `S1000`. |
-| USSD dies mid-flow | Session store not shared across instances, no `mt-fin`, or a handler too slow for the session timeout. |
+| USSD dies mid-flow | Session store not shared across instances or workers (an in-process map, whatever the language), no `mt-fin`, or a handler too slow for the session timeout. |
 | Duplicate charges | A debit retried with a fresh `externalTrxId` after a timeout. |
 | Works locally, fails deployed | The egress IP changed, or secrets are not set in the host environment. |
 | Certificate / TLS errors | Incomplete certificate chain — supply the intermediate CA, do **not** disable verification. |

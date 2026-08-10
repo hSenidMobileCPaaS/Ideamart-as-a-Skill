@@ -21,32 +21,43 @@ Ask, or find in the code:
 - A **static egress IP**? Required — `curl -4 https://myip.ideamart.io` on the server that
   will make the calls.
 
-## 2. Config before code
+## 2. Pick the stack — the host project's, not the template's
 
-Copy `templates/.env.example` and `templates/typescript/ideamart-config.ts`. Requirements:
+Ideamart is JSON over HTTPS, so build in whatever the project already uses. `templates/` ships
+config + client + callbacks for **TypeScript/Node, Python, Java, Go, PHP and C#**
+(`templates/README.md` indexes them); for anything else, follow the seven components and the
+acceptance checklist in `references/11-any-stack.md`. Never add a second runtime for this.
 
-- One module reads `process.env`; nothing else does.
-- Validate at startup and **throw** on anything missing.
+## 3. Config before code
+
+Copy `templates/.env.example` — the variable names are identical in every language — and the
+config file from your language's directory. Requirements:
+
+- One module reads the environment; nothing else does.
+- Validate at startup and **fail loudly** on anything missing.
 - `.env` git-ignored; `.env.example` placeholders only.
 
-## 3. One client, one `post()` helper
+## 4. One client, one `post()` helper
 
-Copy `templates/typescript/ideamart-client.ts`. Every service is a thin wrapper over a single
-`post()` that injects credentials, sets a timeout, retries only transient codes, and throws a
-typed error on non-`S1000`.
+Copy the client from the same directory. Every service is a thin wrapper over a single `post()`
+that injects credentials, sets a timeout, retries only transient codes, and raises a typed error
+on non-`S1000`. Success is decided by `statusCode`, never by the HTTP status.
 
 Get each contract with `node tools/ideamart.mjs show <id>` — do not recall parameter names.
 
-## 4. Callbacks
+## 5. Callbacks
 
 Half the integration is inbound. Use the `ideamart-callbacks` skill.
 
-## 5. Verify
+## 6. Verify
 
 ```bash
 node tools/ideamart.mjs validate <id> '<payload you generated>'
 ./scripts/smoke-test.sh          # or .\scripts\smoke-test.ps1
 ```
+
+Both scripts are plain curl, so they verify a handler in any language. For a port into a stack
+with no template, finish with the acceptance checklist in `references/11-any-stack.md`.
 
 Match the host project's stack and conventions. The templates are a specification, not a
 framework to impose.

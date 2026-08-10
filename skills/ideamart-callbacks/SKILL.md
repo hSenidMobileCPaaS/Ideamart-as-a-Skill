@@ -24,8 +24,9 @@ from a separate `POST /ussd/send`.
 
 ## Five rules
 
-1. **Acknowledge first, work second.** Queue the payload, return `S1000`, process out of band.
-   USSD sessions time out in seconds.
+1. **Acknowledge first, work second.** Queue the payload, return `S1000`, process out of band —
+   through the stack's real background mechanism (a queue, `BackgroundTasks`, `@Async`, a worker
+   goroutine, a hosted service), never a bare `await`. USSD sessions time out in seconds.
 2. **Be idempotent.** Every callback can arrive twice. Dedupe on the documented key —
    `node tools/ideamart.mjs show <id>` gives it.
 3. **Never trust the body.** Unauthenticated JSON from the internet. Validate the schema,
@@ -43,7 +44,13 @@ The payloads are fully specified, so post them yourself:
 ```
 
 It covers valid, malformed, wrong-app, missing-field, oversized **and duplicate** payloads —
-the duplicate test is the one people skip.
+the duplicate test is the one people skip. It is plain curl, so it tests a handler written in
+any language.
 
-Working handlers: `templates/typescript/callbacks-nextjs.ts`.
+Working handlers, in the language of the host project:
+`templates/typescript/callbacks-nextjs.ts` (Next.js), `templates/python/callbacks_fastapi.py`,
+`templates/java/IdeamartCallbackController.java` (Spring), `templates/go/callbacks.go`,
+`templates/php/callbacks.php`, `templates/csharp/IdeamartCallbacks.cs` (ASP.NET Core). For any
+other stack, the per-language acknowledge-first table is in `references/11-any-stack.md`.
+
 Full contract: `references/07-callbacks.md`.

@@ -198,5 +198,5 @@ in rather than assuming one set.
 - Rate-limit your own sending: operator TPS/TPD limits are fixed per agreement, and exceeding
   them gets requests rejected rather than queued.
 
-See [templates/typescript/ideamart-client.ts](../templates/typescript/ideamart-client.ts)
-and [templates/typescript/callbacks-nextjs.ts](../templates/typescript/callbacks-nextjs.ts).
+Working `sendSms` and MO/DLR handlers in six languages: [templates/](../templates/README.md).
+Any other stack: [11-any-stack.md](11-any-stack.md).

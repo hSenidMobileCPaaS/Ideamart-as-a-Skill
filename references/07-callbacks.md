@@ -39,20 +39,23 @@ user sees comes from a separate `POST /ussd/send`, not from what you return here
 
 ### 1. Acknowledge first, work second
 
-Respond `S1000` immediately, then process asynchronously (queue, background job, `setImmediate`
-— whatever the stack offers). Never do a database write chain, a third-party call, or an
-Ideamart call *before* responding.
+Respond `S1000` immediately, then process asynchronously. Never do a database write chain, a
+third-party call, or an Ideamart call *before* responding.
 
 USSD sessions time out in seconds. Delivery reports arrive in bursts. A slow handler causes
 retries, duplicates, and dropped sessions.
 
-```ts
-export async function POST(req: Request) {
-  const body = await req.json();
-  queue.push(body);                                    // do not await real work
-  return Response.json({ statusCode: "S1000", statusDetail: "Success" });
-}
 ```
+handler(request):
+    body = parse_json(request)          # malformed → still acknowledge
+    enqueue(body)                       # hand off; do NOT wait for the work
+    return 200, { "statusCode": "S1000", "statusDetail": "Success" }
+```
+
+"Enqueue" means the stack's real background mechanism — a queue or broker, `BackgroundTasks`
+in FastAPI, `@Async` in Spring, a worker goroutine, a hosted service in .NET, a queued job in
+Laravel. Not a bare `await`, and not "it's fast enough". The per-stack table is in
+[11-any-stack.md](11-any-stack.md#6-callback-endpoints).
 
 ### 2. Be idempotent
 
@@ -147,37 +150,37 @@ free tiers. **Never leave a tunnel URL configured in a production app record.**
 
 ## Reference handler
 
-```ts
-import { NextRequest, NextResponse } from "next/server";
+The same five steps in every language and framework:
 
-const ACK = { statusCode: "S1000", statusDetail: "Success" };
+```
+ACK = { "statusCode": "S1000", "statusDetail": "Success" }
 
-export async function POST(req: NextRequest) {
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json(ACK);            // malformed — acknowledge, discard
-  }
-
-  const parsed = MoSmsSchema.safeParse(body); // schema validation (zod, etc.)
-  if (!parsed.success) {
-    logger.warn({ event: "callback.invalid", path: "sms/mo" });
-    return NextResponse.json(ACK);
-  }
-
-  if (parsed.data.applicationId !== config.applicationId) {
-    logger.warn({ event: "callback.wrong_app" });
-    return NextResponse.json(ACK);
-  }
-
-  void enqueue("sms.mo", parsed.data);         // process out of band
-  return NextResponse.json(ACK);
-}
+handler(request):
+    if not from_ideamart_ip(request):     return 200, ACK   # allowlist, if configured
+    body = try_parse_json(request)
+    if body is null:                      return 200, ACK   # malformed — acknowledge, discard
+    if not schema_valid(body):            return 200, ACK   # log the pattern, do not crash
+    if body.applicationId != config.applicationId:
+                                          return 200, ACK   # someone else's payload
+    if seen_before(dedupe_key(body)):     return 200, ACK   # redelivery
+    enqueue("sms.mo", body)                                 # process out of band
+    return 200, ACK
 ```
 
-Complete working routes for all five callbacks:
-[templates/typescript/callbacks-nextjs.ts](../templates/typescript/callbacks-nextjs.ts).
+Note what never happens: no 4xx, no 5xx, no work before the response, no trust in the body.
+
+Complete working routes for all five callbacks, per stack:
+
+| Stack | File |
+|---|---|
+| TypeScript / Next.js | [templates/typescript/callbacks-nextjs.ts](../templates/typescript/callbacks-nextjs.ts) |
+| Python / FastAPI | [templates/python/callbacks_fastapi.py](../templates/python/callbacks_fastapi.py) |
+| Java / Spring | [templates/java/IdeamartCallbackController.java](../templates/java/IdeamartCallbackController.java) |
+| Go / net/http | [templates/go/callbacks.go](../templates/go/callbacks.go) |
+| PHP (framework-neutral, Laravel notes) | [templates/php/callbacks.php](../templates/php/callbacks.php) |
+| C# / ASP.NET Core | [templates/csharp/IdeamartCallbacks.cs](../templates/csharp/IdeamartCallbacks.cs) |
+
+Any other stack: [11-any-stack.md](11-any-stack.md).
 
 ---
 

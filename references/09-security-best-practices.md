@@ -10,19 +10,19 @@ production payment key, because that is what it is.
 
 ### Never hardcode. Ever.
 
-```ts
-// ❌ Never
-const APP_ID = "APP_001807";
-const PASSWORD = "cf2b9e361c13bc54b86d3c8180b0fd242";
+```
+# ❌ Never — in source, in a test fixture, in application.yml / appsettings.json / settings.py
+APP_ID   = "APP_001807"
+PASSWORD = "<a real 32-character password>"
 
-// ❌ Never — a "default" is a hardcoded credential with extra steps
-const password = process.env.IDEAMART_PASSWORD || "cf2b9e361c13bc54b86d3c8180b0fd242";
+# ❌ Never — a "default" is a hardcoded credential with extra steps
+password = env("IDEAMART_PASSWORD") or "<a real 32-character password>"
 
-// ❌ Never — client-side, whatever the framework calls it
-const APP_ID = process.env.NEXT_PUBLIC_IDEAMART_APP_ID;
+# ❌ Never — client-side, whatever the framework calls it
+APP_ID = env("NEXT_PUBLIC_IDEAMART_APP_ID")     # or VITE_ / REACT_APP_ / PUBLIC_ / EXPO_PUBLIC_
 
-// ✅ Environment variable, validated at startup, server-side only
-const password = requireEnv("IDEAMART_PASSWORD");
+# ✅ Environment variable, validated at startup, server-side only
+password = require_env("IDEAMART_PASSWORD")
 ```
 
 ### The rules
@@ -32,8 +32,8 @@ const password = requireEnv("IDEAMART_PASSWORD");
 | Credentials come from environment variables only | The only mechanism every host supports without putting secrets in the repo |
 | `.env` is in `.gitignore`; `.env.example` holds **placeholder** values only | The example file is committed; it must never contain a real value |
 | Validate at startup and **crash loudly** if missing | A silent `undefined` becomes an `E1313` at 3am instead of a clear boot error |
-| One config module; nothing else reads `process.env` | One place to audit, one place to change |
-| Never a `NEXT_PUBLIC_` / `VITE_` / `REACT_APP_` prefix | Those are compiled into the browser bundle and are world-readable |
+| One config module; nothing else reads the environment | One place to audit, one place to change |
+| Never a browser-exposed prefix — `NEXT_PUBLIC_`, `VITE_`, `REACT_APP_`, `PUBLIC_`, `EXPO_PUBLIC_` — and never served through a client-facing config endpoint | Those are compiled into the browser bundle, or fetched by it, and are world-readable |
 | Never in logs, error messages, stack traces, or crash reports | Redact by key name, not by value matching |
 | Never in a URL or query string | Proxies, browser history and access logs capture URLs |
 | Never in a Docker `ENV` line or a committed compose file | Image layers are readable by anyone who pulls the image |
@@ -44,7 +44,7 @@ const password = requireEnv("IDEAMART_PASSWORD");
 
 | Environment | Mechanism |
 |---|---|
-| Local development | `.env`, git-ignored |
+| Local development | `.env`, git-ignored (dotenv, python-dotenv, godotenv, `spring.config.import`, `DotNetEnv` — same file, different loader) |
 | Docker / Compose | `env_file:` or Docker secrets — **not** `ENV` in the Dockerfile |
 | Kubernetes | `Secret` mounted as env, ideally via External Secrets / Sealed Secrets |
 | Vercel / Netlify / Railway / Render | Project environment variables, marked secret, **server-side scope** |
@@ -67,21 +67,19 @@ screenshot, a log aggregator, a pasted stack trace.
 
 ### Startup validation
 
-```ts
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value || value.trim() === "") {
-    throw new Error(
-      `Missing required environment variable ${name}. ` +
-      `Copy .env.example to .env and fill in your Ideamart credentials.`
-    );
-  }
-  return value;
-}
+```
+function require_env(name):
+    value = env(name)
+    if value is empty:
+        fail("Missing required environment variable " + name +
+             ". Copy .env.example to .env and fill in your Ideamart credentials.")
+    return trim(value)
 ```
 
 Fail at boot, not at first use. A misconfigured deployment should refuse to start rather than
-accept traffic it cannot serve.
+accept traffic it cannot serve. Where the framework has a mechanism for this, use it:
+`ValidateOnStart()` in .NET, `@Validated` `@ConfigurationProperties` in Spring, a module-level
+factory in Python, `LoadConfig` before `ListenAndServe` in Go, a container binding in PHP.
 
 ---
 
@@ -110,45 +108,57 @@ Consequences to design for:
 ## 3. TLS verification
 
 Some Ideamart hosts serve an incomplete certificate chain — they send the leaf certificate but
-not the intermediate. Browsers paper over this by fetching the missing cert; strict clients,
-notably Node.js, do not, and the handshake fails.
+not the intermediate. Browsers paper over this by fetching the missing cert; strict clients do
+not, and the handshake fails. Node, Python, Java, Go, PHP/cURL and .NET are all strict clients.
 
-The workaround you will find in sample code is:
+The workaround you will find in sample code is to turn verification off. Every stack spells it
+differently and every spelling is the same mistake:
 
-```ts
-// ❌ Do not ship this
-const agent = new https.Agent({ rejectUnauthorized: false });
-```
+| Stack | ❌ Do not ship this |
+|---|---|
+| Node | `new https.Agent({ rejectUnauthorized: false })`, `NODE_TLS_REJECT_UNAUTHORIZED=0` |
+| Python | `verify=False`, `ssl._create_unverified_context()` |
+| Java | a `TrustManager` whose `checkServerTrusted` does nothing |
+| Go | `tls.Config{ InsecureSkipVerify: true }` |
+| PHP | `CURLOPT_SSL_VERIFYPEER => false` |
+| .NET | `ServerCertificateCustomValidationCallback` returning `true` |
 
-That disables **all** certificate validation on that connection. Anyone able to intercept the
+Each of them disables **all** certificate validation on that connection. Anyone able to intercept the
 route can present their own certificate and read your `applicationId` and `password` in
 plaintext — the exact credentials that can charge your subscribers. It converts a cosmetic
 chain problem into a total compromise of the integration.
 
 **Acceptable options, in order of preference:**
 
-1. **Supply the missing intermediate CA explicitly.** Fetch the intermediate certificate,
-   commit it as a `.pem`, and pass it as `ca`. Validation stays fully on:
-   ```ts
-   const agent = new https.Agent({
-     ca: fs.readFileSync("./certs/ideamart-chain.pem"),   // intermediate + root
-     keepAlive: true,
-   });
-   ```
+1. **Supply the missing intermediate CA explicitly.** Fetch the intermediate certificate, commit
+   it as a `.pem` (it is public — it is not a secret), and point the HTTP client at it.
+   Validation stays fully on:
+
+   | Stack | ✅ How |
+   |---|---|
+   | Node | `new https.Agent({ ca: fs.readFileSync("certs/ideamart-chain.pem") })` |
+   | Python | `ssl.create_default_context(cafile="certs/ideamart-chain.pem")` |
+   | Java | import into a truststore (`keytool -importcert`) and build an `SSLContext` from it |
+   | Go | `x509.NewCertPool()` + `AppendCertsFromPEM` → `tls.Config{RootCAs: pool}` |
+   | PHP | `CURLOPT_CAINFO => 'certs/ideamart-chain.pem'` |
+   | .NET | `SocketsHttpHandler` with a custom `SslClientAuthenticationOptions` trust store |
+
 2. **Update the system trust store** on the host / in the container image, and let the default
-   agent work.
+   client work. This fixes every language at once and is often the cleanest answer.
 3. **Ask Ideamart support to fix the chain.** It is a server misconfiguration; report it.
 4. **If you must disable verification to unblock local development**, keep it a source-level
    constant that is obvious in code review and impossible to switch on by deployment
-   configuration — never an environment variable, which is exactly the thing that gets copied
-   into production by accident:
-   ```ts
-   // Development only. Never commit this as true.
-   const ALLOW_INSECURE_TLS = false;
+   configuration — never an environment variable or a config-file key, which are exactly the
+   things that get copied into production by accident:
+   ```
+   # Development only. Never commit this as true.
+   ALLOW_INSECURE_TLS = false
    ```
 
-Never set `NODE_TLS_REJECT_UNAUTHORIZED=0` — that disables TLS validation for the entire
-process, including every unrelated dependency.
+Never disable verification process-wide — `NODE_TLS_REJECT_UNAUTHORIZED=0`,
+`PYTHONHTTPSVERIFY=0`, or a trust-all factory installed through
+`HttpsURLConnection.setDefaultSSLSocketFactory`. Those strip TLS validation from every
+unrelated dependency in the process, not just from the Ideamart call.
 
 ---
 

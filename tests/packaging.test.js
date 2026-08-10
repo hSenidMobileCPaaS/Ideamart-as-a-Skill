@@ -119,6 +119,104 @@ test("the Cursor rule keeps its .mdc frontmatter", () => {
   assert.match(read(".cursor/rules/ideamart.mdc"), /^---\ndescription:.*\n[\s\S]*?\n---/);
 });
 
+/* ── Templates: the skill must not be Node-only ──────────────────────────── */
+
+/**
+ * Ideamart is JSON over HTTPS, so the skill has to serve a Django shop and a
+ * Spring shop as well as it serves a Next.js one. These tests keep the
+ * multi-language promise honest: the directories exist, the index lists them,
+ * and the environment contract is genuinely shared.
+ */
+const TEMPLATE_LANGUAGES = {
+  typescript: ["ideamart-config.ts", "ideamart-client.ts", "callbacks-nextjs.ts"],
+  python: ["ideamart_config.py", "ideamart_client.py", "callbacks_fastapi.py"],
+  java: ["IdeamartConfig.java", "IdeamartClient.java", "IdeamartCallbackController.java"],
+  go: ["config.go", "client.go", "callbacks.go"],
+  php: ["IdeamartConfig.php", "IdeamartClient.php", "callbacks.php"],
+  csharp: ["IdeamartOptions.cs", "IdeamartClient.cs", "IdeamartCallbacks.cs"],
+};
+
+test("every documented language ships config, client and callback templates", () => {
+  for (const [language, files] of Object.entries(TEMPLATE_LANGUAGES)) {
+    for (const file of files) {
+      const path = join(repoRoot, "templates", language, file);
+      assert.ok(existsSync(path), `missing templates/${language}/${file}`);
+    }
+  }
+});
+
+test("no template directory is missing from the templates index", () => {
+  const index = read("templates/README.md");
+  const onDisk = readdirSync(join(repoRoot, "templates"), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  assert.ok(onDisk.length >= 6, `expected at least 6 language templates, found ${onDisk.length}`);
+  for (const language of onDisk) {
+    assert.ok(index.includes(`${language}/`), `templates/README.md does not list ${language}/`);
+  }
+});
+
+test("the any-stack reference and the entry points agree on the languages", () => {
+  const sources = {
+    "references/11-any-stack.md": read("references/11-any-stack.md"),
+    "templates/README.md": read("templates/README.md"),
+    "SKILL.md": read("SKILL.md"),
+    "AGENTS.md": read("AGENTS.md"),
+  };
+  for (const [file, content] of Object.entries(sources)) {
+    for (const language of ["Python", "Java", "Go", "PHP"]) {
+      assert.ok(content.includes(language), `${file} does not mention ${language}`);
+    }
+  }
+});
+
+test("every language template reads the same environment variables", () => {
+  // One deployment story across a polyglot estate: the .env.example is the
+  // contract, and a port that invents its own variable names breaks it.
+  const required = ["IDEAMART_APP_ID", "IDEAMART_PASSWORD", "IDEAMART_SMS_SEND_URL"];
+  for (const language of Object.keys(TEMPLATE_LANGUAGES)) {
+    const configFile = TEMPLATE_LANGUAGES[language][0];
+    const content = read(join("templates", language, configFile));
+    for (const variable of required) {
+      assert.ok(
+        content.includes(variable),
+        `templates/${language}/${configFile} does not read ${variable}`
+      );
+    }
+  }
+});
+
+test("no template disables TLS verification", () => {
+  const forbidden = [
+    /rejectUnauthorized:\s*false/,
+    /verify\s*=\s*False/,
+    /InsecureSkipVerify:\s*true/,
+    /CURLOPT_SSL_VERIFYPEER\s*=>\s*false/,
+    /NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*0/,
+  ];
+  const offenders = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(path);
+        continue;
+      }
+      const content = readFileSync(path, "utf8");
+      for (const pattern of forbidden) {
+        // Commented-out warnings are the point of the templates; only flag code.
+        for (const line of content.split("\n")) {
+          const code = line.replace(/^\s*(\/\/|#|\*|\/\*).*/, "");
+          if (pattern.test(code)) offenders.push(`${path.replace(repoRoot, ".")}: ${line.trim()}`);
+        }
+      }
+    }
+  };
+  walk(join(repoRoot, "templates"));
+  assert.deepEqual(offenders, [], `templates disable TLS verification:\n${offenders.join("\n")}`);
+});
+
 /* ── Governance and assets ───────────────────────────────────────────────── */
 
 test("governance files exist", () => {

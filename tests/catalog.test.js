@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, existsSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import {
@@ -297,9 +298,27 @@ test("diagnose degrades to search when nothing matches", () => {
 
 /* ── Repo consistency ────────────────────────────────────────────────────── */
 
-test("all ten reference documents exist", () => {
+test("all eleven reference documents exist", () => {
   const files = readdirSync(join(repoRoot, "references")).filter((f) => f.endsWith(".md"));
-  assert.equal(files.length, 10, `expected 10 reference docs, found ${files.length}`);
+  assert.equal(files.length, 11, `expected 11 reference docs, found ${files.length}`);
+});
+
+/**
+ * The CLI lists reference documents from a hardcoded array. A new file in
+ * references/ that nobody registered is invisible to `ideamart reference`.
+ */
+test("the CLI lists every reference document that exists", () => {
+  const onDisk = readdirSync(join(repoRoot, "references"))
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.replace(/\.md$/, ""))
+    .sort();
+  const listed = JSON.parse(
+    execFileSync("node", ["tools/ideamart.mjs", "reference", "--json"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    })
+  ).documents.sort();
+  assert.deepEqual(listed, onDisk);
 });
 
 /**

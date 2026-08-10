@@ -5,16 +5,21 @@
 **Ideamart returns HTTP 200 for application-level failures.** The real outcome is the
 `statusCode` field in the response body.
 
-```ts
-// WRONG — reports failures as successes
-const res = await fetch(url, { method: "POST", body });
-if (res.ok) return "sent";
-
-// RIGHT
-const res = await fetch(url, { method: "POST", body });
-const data = await res.json();
-if (data.statusCode !== "S1000") throw new IdeamartError(data.statusCode, data.statusDetail);
 ```
+# WRONG — reports failures as successes
+response = http_post(url, body)
+if response.ok: return "sent"
+
+# RIGHT
+response = http_post(url, body)
+data = parse_json(response.body)
+if data.statusCode != "S1000":
+    raise IdeamartError(data.statusCode, data.statusDetail)
+```
+
+Every stack spells the wrong version differently — `res.ok`, `raise_for_status()`,
+`EnsureSuccessStatusCode()`, `response.IsSuccessStatusCode`, Guzzle's `http_errors`,
+`resp.StatusCode == 200`. All of them are the same bug.
 
 Every response carries `statusCode` and `statusDetail`. Codes starting `S` are success;
 codes starting `E` are errors.
@@ -167,41 +172,32 @@ placeholder the platform fills in.
 
 ## Reference implementation
 
-```ts
-export class IdeamartError extends Error {
-  constructor(readonly statusCode: string, readonly statusDetail: string) {
-    super(`[${statusCode}] ${statusDetail}`);
-    this.name = "IdeamartError";
-  }
-  get retryable(): boolean {
-    return TRANSIENT.has(this.statusCode);
-  }
-  get isConfiguration(): boolean {
-    return CONFIGURATION.has(this.statusCode);
-  }
-}
+Whatever your language calls an error — exception, error struct, result variant — it needs the
+code, the detail, and two questions answerable from the sets below:
 
-const TRANSIENT = new Set([
-  "E1316", "E1318", "E1319", "E1332", "E1341",
-  "E1360", "E1363", "E1364", "E1600", "E1601", "E1602", "E1603",
-]);
+```
+TRANSIENT = { E1316, E1318, E1319, E1332, E1341,
+              E1360, E1363, E1364, E1600, E1601, E1602, E1603 }
 
-const CONFIGURATION = new Set([
-  "E1301", "E1302", "E1303", "E1304", "E1305", "E1306", "E1307",
-  "E1309", "E1310", "E1311", "E1313", "E1315", "E1322", "E1323",
-  "E1324", "E1327", "E1328", "E1329", "E1336", "E1371", "E1381",
-  "E1383", "E1387",
-]);
+CONFIGURATION = { E1301, E1302, E1303, E1304, E1305, E1306, E1307,
+                  E1309, E1310, E1311, E1313, E1315, E1322, E1323,
+                  E1324, E1327, E1328, E1329, E1336, E1371, E1381,
+                  E1383, E1387 }
 
-/** Codes that mean "the outcome you wanted already holds". */
-export const BENIGN = {
-  register:   new Set(["E1351"]),
-  unregister: new Set(["E1356"]),
-  debit:      new Set(["E1379"]),
-} as const;
+# Codes that mean "the outcome you wanted already holds".
+BENIGN = { register: E1351, unregister: E1356, debit: E1379 }
+
+error IdeamartError(statusCode, statusDetail, service):
+    retryable       = statusCode in TRANSIENT
+    isConfiguration = statusCode in CONFIGURATION
 ```
 
-Full version: [templates/typescript/ideamart-client.ts](../templates/typescript/ideamart-client.ts).
+These sets are also machine-readable in
+[`catalog/ideamart-api.json`](../catalog/ideamart-api.json) under `statusCodes` (each code
+carries its `class`), so you can generate them rather than retyping them.
+
+Working versions: [templates/](../templates/README.md) — TypeScript, Python, Java, Go, PHP and
+C# all express exactly this.
 
 Alerting rule of thumb: any **configuration**-class code in production is a page — the whole
 integration is down, not one request. Transient codes belong on a rate dashboard.

@@ -40,6 +40,12 @@ None of that is the model being careless. It is the model not having the contrac
 This repo gives it the contract: every endpoint, every parameter, every status code, and the
 handful of rules that separate a working integration from a suspended one.
 
+**In whatever language you already use.** Ideamart is JSON over HTTPS, so nothing here is tied
+to one runtime: working templates ship for TypeScript/Node, Python, Java, Go, PHP and C#, and
+[references/11-any-stack.md](references/11-any-stack.md) specifies the same integration
+language-neutrally — seven components, per-language notes, and an acceptance checklist — for
+Ruby, Rust, Kotlin, Elixir or anything else.
+
 ---
 
 ## Install
@@ -183,8 +189,10 @@ Return the number of subscribers currently registered to the application.
 | `reference <doc>` | Show me the full guide. |
 | `platform` | Base URLs, operators, conventions. |
 
-Add `--json` to any command for machine-readable output. Agents that cannot run commands read
-the catalog JSON directly — same data.
+Add `--json` to any command for machine-readable output. Agents that cannot run commands — or
+machines without Node — read the catalog JSON directly; same data, and `jq` or a one-line
+Python snippet gets at it. The CLI is a documentation reader: it makes no network calls, never
+sees a credential, and puts no constraint on the language your integration is written in.
 
 It catches the real mistakes, not just missing fields:
 
@@ -235,6 +243,9 @@ one at a mock is the whole local-development switch.
 Timeouts, encodings and retry policy are **not** configuration — they are constants in the
 client, because they are properties of the protocol rather than of your deployment.
 
+These variable names are identical across every language template, so a polyglot estate has one
+deployment story.
+
 ## Architecture it steers agents toward
 
 <p align="center">
@@ -254,6 +265,18 @@ client, because they are properties of the protocol rather than of your deployme
 | **CaaS** | Direct debit, query balance, charging notifications, reconciliation |
 | **LBS** | Get location, QoS precedence rules, privacy handling |
 | **IVR** | Not publicly documented — documented as such, with an extension pattern |
+
+### Languages
+
+| Stack | What ships |
+|---|---|
+| TypeScript / Node | config, client, types, Next.js callback routes, USSD session store |
+| Python | config, client, FastAPI callbacks, USSD session store (standard library only) |
+| Java | config, client, Spring callback controller |
+| Go | config, client, `net/http` callbacks (standard library only) |
+| PHP | config, client, framework-neutral callbacks with Laravel notes |
+| C# / .NET | options, typed client, ASP.NET Core callbacks + background worker |
+| Anything else | [references/11-any-stack.md](references/11-any-stack.md) — the seven components, per-language notes, acceptance checklist |
 
 Plus the complete official status-code table, all five callback contracts, and the operational
 practices that keep an application approved.
@@ -280,15 +303,15 @@ Nine mistakes agents make on this platform, and what each one costs:
 
 | Mistake | Consequence |
 |---|---|
-| `if (res.ok) return "sent"` | Ideamart returns **HTTP 200 for errors**. Every failure reported as a success. |
+| Deciding on the HTTP status (`res.ok`, `raise_for_status()`, `EnsureSuccessStatusCode()`) | Ideamart returns **HTTP 200 for errors**. Every failure reported as a success. |
 | `destinationAddresses: "tel:94…"` | It is always an **array**. Sends fail. |
 | Hardcoded `applicationId` / `password` | A credential that can charge your subscribers, committed to git. |
 | `E1351` / `E1356` / `E1379` treated as failures | Working flows reported as broken; charges repeated. |
 | Debit retried with a fresh `externalTrxId` | **Double-charges a real person.** |
 | Self-generated USSD `sessionId` | Sessions orphan; the user's screen goes blank. |
-| USSD sessions in an in-process `Map` | Works in dev, breaks the moment you scale. |
+| USSD sessions in an in-process map, whatever the language | Works in dev, breaks the moment you scale. |
 | Work before acknowledging a callback | Sessions time out; duplicates pile up. |
-| `rejectUnauthorized: false` shipped | Your credentials become interceptable. |
+| TLS verification switched off (`rejectUnauthorized: false`, `verify=False`, `InsecureSkipVerify`, …) | Your credentials become interceptable. |
 
 ---
 
@@ -323,9 +346,10 @@ Then ask your agent:
 SKILL.md · AGENTS.md              Entry points (Claude Code / everyone else)
 catalog/ideamart-api.json         The whole contract as structured data
 tools/ideamart.mjs                Offline CLI over the catalog
-references/                       10 guides: per-service, callbacks, codes, security, go-live
-templates/                        .env.example + working TypeScript (config, client, types,
-                                  callback handlers, USSD session store)
+references/                       11 guides: per-service, callbacks, codes, security, go-live,
+                                  and the language-neutral implementation spec
+templates/                        .env.example + working config, client and callback handlers
+                                  in TypeScript/Node, Python, Java, Go, PHP and C#
 skills/ · commands/               7 task skills and their slash commands
 scripts/                          Smoke tests (bash + PowerShell), callback tests, rule sync
 docs/agent-support.md             Which agent reads which file

@@ -159,10 +159,11 @@ Pointing one of them at a mock is the whole local-development switch:
 IDEAMART_SMS_SEND_URL=http://localhost:4010/sms/send
 ```
 
-Never branch on `NODE_ENV` inside client code to pick a URL, and never inline one. Read them
-from config so the same binary runs everywhere. See
-[templates/.env.example](../templates/.env.example) and
-[templates/typescript/ideamart-config.ts](../templates/typescript/ideamart-config.ts).
+Never branch on an environment name (`NODE_ENV`, `APP_ENV`, `ASPNETCORE_ENVIRONMENT`, a Spring
+profile) inside the client to pick a URL, and never inline one. Read them from config so the
+same build runs everywhere. See [templates/.env.example](../templates/.env.example) — the
+variable names are identical in every language — and the config module for your stack in
+[templates/](../templates/README.md).
 
 ## Your first call
 

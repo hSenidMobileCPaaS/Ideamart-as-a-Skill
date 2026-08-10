@@ -12,7 +12,9 @@ Which file each agent reads, and what you get.
 | **Context** | The agent reads `AGENTS.md` from the project root with zero setup |
 
 Every tier gets the full `references/`, `templates/`, `catalog/` and `tools/` — the CLI works
-anywhere the agent can run a shell command, which is the practical floor for all of them.
+anywhere the agent can run a shell command, which is the practical floor for all of them. Tiers
+say nothing about the language you build in: `templates/` covers TypeScript/Node, Python, Java,
+Go, PHP and C#, and `references/11-any-stack.md` covers everything else.
 
 ## Matrix
 

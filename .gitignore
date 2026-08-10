@@ -13,6 +13,14 @@ dist/
 build/
 *.tsbuildinfo
 
+# Per-language template byproducts (the templates are read, not run, from here)
+__pycache__/
+*.pyc
+*.class
+bin/
+obj/
+vendor/
+
 # Editors / OS
 .DS_Store
 Thumbs.db

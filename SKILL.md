@@ -11,7 +11,12 @@ subscription lifecycle, mobile-account charging, location — as JSON-over-HTTPS
 application can call.
 
 This skill makes you able to build a correct, production-shaped Ideamart integration from
-scratch, or add Ideamart to an existing product.
+scratch, or add Ideamart to an existing product, **in any language**. The platform is JSON over
+HTTPS with a shared-secret credential pair; nothing about it privileges a particular runtime or
+framework. Build in whatever the host project already uses — the shipped templates cover
+TypeScript/Node, Python, Java, Go, PHP and C#, and
+[references/11-any-stack.md](references/11-any-stack.md) specifies the same integration in
+language-neutral terms for everything else.
 
 ---
 
@@ -65,8 +70,10 @@ node tools/ideamart.mjs reference <doc>              # print a reference documen
 node tools/ideamart.mjs platform                     # base URLs, operators, conventions
 ```
 
-`--json` on any command for machine-readable output. If you cannot run commands, read
-`catalog/ideamart-api.json` directly — same data.
+`--json` on any command for machine-readable output. If you cannot run commands — or Node is
+not available — read `catalog/ideamart-api.json` directly; it is plain JSON and holds the same
+data. The CLI is a documentation reader, not part of the integration: it makes no network
+calls, never sees a credential, and puts no constraint on the stack you build in.
 
 **Working order:** `search`/`list` to find the service → `show` for the exact contract → write
 the code → `validate` the payload you generated → `code`/`diagnose` when something fails.
@@ -91,10 +98,12 @@ it; you can still build and test the whole integration against the local mock fi
 Most real applications need *Subscription + SMS* at minimum; charging apps add *CaaS*;
 feature-phone reach adds *USSD*.
 
-**Step 3 — Scaffold config before code.** Create `.env` / `.env.example` and the config
-module first, so no credential ever has a chance to land in a source file. Copy from
-[templates/.env.example](templates/.env.example) and
-[templates/typescript/ideamart-config.ts](templates/typescript/ideamart-config.ts).
+**Step 3 — Pick the stack, then scaffold config before code.** The stack is the host project's,
+not the template's: a Django codebase gets Python, a Spring service gets Java, a Laravel app
+gets PHP. Create `.env` / `.env.example` and the config module first, so no credential ever has
+a chance to land in a source file. Copy from [templates/.env.example](templates/.env.example)
+— the variable names are identical in every language — and the config file from the matching
+directory in [templates/](templates/README.md).
 
 **Step 4 — Build the client, then the callbacks.** Outbound calls (`send`, `debit`) and
 inbound callbacks (MO SMS, USSD, notifications) are two separate halves. Both are required
@@ -162,11 +171,12 @@ Every response is HTTP 200 with:
 { "statusCode": "S1000", "statusDetail": "Success", "version": "1.0", … }
 ```
 
-So the correct client is one `post(path, payload)` helper that injects credentials from
-config, plus per-service typed wrappers. Do not write bespoke fetch calls per endpoint.
-[templates/typescript/ideamart-client.ts](templates/typescript/ideamart-client.ts) is a
-complete working implementation of exactly this — port it to the project's language rather
-than inventing a new structure.
+So the correct client, in every language, is one `post(path, payload)` helper that injects
+credentials from config, plus per-service wrappers. Do not write bespoke HTTP calls per
+endpoint. [templates/](templates/README.md) has complete working implementations of exactly
+this in six languages — take the closest one rather than inventing a new structure, and read
+[references/11-any-stack.md](references/11-any-stack.md) if the project's stack is not among
+them.
 
 ### Addressing
 
@@ -202,10 +212,12 @@ Normalise once, in one function, at the boundary. Never string-concatenate `tel:
   platform sees your real egress IP, and sending forged headers to a carrier is exactly the
   kind of thing that gets an app suspended.
 - **TLS:** some Ideamart hosts serve an incomplete certificate chain, which makes strict
-  clients (notably Node.js) fail. Disabling verification globally
-  (`rejectUnauthorized: false`, `verify=False`) is **not** an acceptable production fix — it
-  opens you to interception of your own credentials. Supply the intermediate CA explicitly
-  instead. See [references/09-security-best-practices.md](references/09-security-best-practices.md#tls-verification).
+  clients fail — Node, Python, Java, Go and .NET all reject it where a browser papers over it.
+  Disabling verification (`rejectUnauthorized: false`, `verify=False`, `InsecureSkipVerify`,
+  `CURLOPT_SSL_VERIFYPEER => false`, a trust-all `TrustManager`) is **not** an acceptable
+  production fix in any of them — it opens you to interception of your own credentials. Supply
+  the intermediate CA explicitly instead. See
+  [references/09-security-best-practices.md](references/09-security-best-practices.md#3-tls-verification).
 
 ---
 
@@ -225,18 +237,24 @@ Read the one that matches the task. Do not guess parameter names — they are al
 | [08-status-codes.md](references/08-status-codes.md) | Complete official code list + how to handle each class |
 | [09-security-best-practices.md](references/09-security-best-practices.md) | Secrets, TLS, PII, logging, consent, rate limits |
 | [10-production-checklist.md](references/10-production-checklist.md) | Pre-go-live verification |
+| [11-any-stack.md](references/11-any-stack.md) | The integration specified language-neutrally: the seven components, per-language notes, port acceptance checklist |
 
-Templates in [templates/](templates/) are working TypeScript/Node reference implementations
-(config, client, types, Next.js callback routes, USSD session store) plus a `.env.example`.
-Scripts in [scripts/](scripts/) are curl smoke tests for every endpoint.
+Templates in [templates/](templates/README.md) are working reference implementations of the
+same integration — config, client, callback handlers and session store — in **TypeScript/Node,
+Python, Java, Go, PHP and C#**, plus a shared `.env.example`. Scripts in [scripts/](scripts/)
+are curl smoke tests, so they exercise a handler written in any language.
 
 ---
 
 ## When generating code
 
+- **Write it in the host project's language and idiom.** Never introduce a new runtime, a
+  Node sidecar, or a second service just to reach Ideamart — a plain HTTPS POST is all it takes,
+  and every stack can make one.
 - Put every Ideamart call behind a service module. No endpoint URLs or credentials scattered
   through controllers.
-- Type or schema-validate both directions. Inbound callback bodies come from outside your
+- Type or schema-validate both directions with whatever the stack uses (types, pydantic, Bean
+  Validation, struct tags, data annotations). Inbound callback bodies come from outside your
   trust boundary.
 - Log `requestId` / `externalTrxId` / `sessionId` on every operation — they are how Ideamart
   support traces an issue. Log the `statusCode`. **Never** log `password`, and mask

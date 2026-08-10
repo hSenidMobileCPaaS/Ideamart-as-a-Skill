@@ -163,23 +163,18 @@ Do not invent endpoints, parameter names or status codes for IVR. If a user asks
 This skill is built so a new service (IVR, or anything else Ideamart later publishes) drops in
 without touching existing code. When the specification arrives:
 
-1. **Add a reference file** — `references/11-ivr.md` — with the same sections as the others:
+1. **Add a reference file** — `references/12-ivr.md` — with the same sections as the others:
    endpoint, request table, response table, callbacks, status codes, rules.
-2. **Add the endpoint path to config**, not to code:
-   ```ts
-   // templates/typescript/ideamart-config.ts
-   endpoints: {
-     …,
-     ivrCall: "/ivr/call",          // ← new
-   }
-   ```
-3. **Add typed request/response interfaces** to `ideamart-types.ts`.
-4. **Add one wrapper method** to the client. It reuses the same `post()` helper, so it
+2. **Add the endpoint variable to config**, not to code — `IDEAMART_IVR_CALL_URL` in
+   `.env.example` and in the endpoint map of whichever config module your stack uses
+   (`endpoints` in TypeScript, `_ENDPOINT_VARS` in Python, `ENDPOINT_VARS` in Java/PHP,
+   `endpointVars` in Go, `EndpointVariables` in C#).
+3. **Add request/response types** where your template keeps them.
+4. **Add one wrapper function** to the client. It reuses the same `post()` helper, so it
    inherits credential injection, timeouts, retries, error mapping and logging for free:
-   ```ts
-   async placeIvrCall(input: IvrCallInput): Promise<IvrCallResponse> {
-     return this.post(config.endpoints.ivrCall, { ...input });
-   }
+   ```
+   function placeIvrCall(input):
+       return post("ivr-call", requireEndpoint("ivrCall"), input)
    ```
 5. **Add a callback route** if the service pushes notifications, following the shape in
    [07-callbacks.md](07-callbacks.md).

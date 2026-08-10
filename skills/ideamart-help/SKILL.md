@@ -53,7 +53,15 @@ command for machine-readable output.
 ## References
 
 `01-getting-started` · `02-sms` · `03-ussd` · `04-subscription` · `05-caas` · `06-lbs-ivr` ·
-`07-callbacks` · `08-status-codes` · `09-security-best-practices` · `10-production-checklist`
+`07-callbacks` · `08-status-codes` · `09-security-best-practices` · `10-production-checklist` ·
+`11-any-stack`
+
+## Languages
+
+The integration can be written in **any** language — Ideamart is JSON over HTTPS. Working
+templates ship for TypeScript/Node, Python, Java, Go, PHP and C# (`templates/README.md`), and
+`references/11-any-stack.md` specifies the same seven components language-neutrally for
+anything else. The CLI above needs Node, but it is only a documentation reader.
 
 ## The three things to remember
 
