@@ -49,6 +49,7 @@ node tools/ideamart.mjs show <id>                    # full contract: params, re
 node tools/ideamart.mjs search "<query>"             # find by intent, e.g. "base size"
 node tools/ideamart.mjs curl <id> [key=value ...]    # build a valid, runnable request
 node tools/ideamart.mjs validate <id> '<json>'       # check a payload against the spec
+node tools/ideamart.mjs codegen <what> --lang=<x>    # emit ready-to-paste code
 node tools/ideamart.mjs code <statusCode>            # decode a status code + the fix
 node tools/ideamart.mjs diagnose "<symptom>"         # cause and fix from a symptom
 node tools/ideamart.mjs practices [severity]         # security and reliability rules
@@ -63,8 +64,24 @@ data. The CLI is a documentation reader, not part of the integration, and constr
 about the stack you build in.
 
 **Use them in this order:** `search` or `list` to find the service → `show` for the exact
-contract → write the code → `validate` the payload you generated → `code`/`diagnose` when
+contract → `codegen` the call → `validate` the payload it produces → `code`/`diagnose` when
 something fails.
+
+### Generate the code, do not recall it
+
+`codegen` writes working code from the contract itself, so the payload, benign codes, timeout
+and `statusCode` branching cannot drift. Adapt the output to the project's conventions.
+
+```bash
+node tools/ideamart.mjs codegen <service-id>  --lang=<language>   # one wrapper
+node tools/ideamart.mjs codegen client        --lang=<language>   # every service + post() + config
+node tools/ideamart.mjs codegen errors        --lang=<language>   # all 86 status codes, classified
+node tools/ideamart.mjs codegen types         --lang=<language>   # request/response models
+node tools/ideamart.mjs codegen callbacks     --lang=<language>   # all five inbound handlers
+```
+
+Languages: `typescript`, `python`, `java`, `go`, `php`, `csharp`. `--out=<dir>` writes files.
+No emitter for your stack? Generate the closest and port it — the shape is identical.
 
 ## Read before writing code
 
@@ -81,6 +98,7 @@ something fails.
 | Secrets, TLS, PII, consent | [references/09-security-best-practices.md](references/09-security-best-practices.md) |
 | Go-live checklist | [references/10-production-checklist.md](references/10-production-checklist.md) |
 | Building in a stack with no template | [references/11-any-stack.md](references/11-any-stack.md) |
+| Taking a project from nothing to production, or adding Ideamart to an existing app | [references/12-implementation-playbook.md](references/12-implementation-playbook.md) |
 
 Working reference implementations in [templates/](templates/README.md) for TypeScript/Node,
 Python, Java, Go, PHP and C#. Take the one matching the project's stack rather than inventing a

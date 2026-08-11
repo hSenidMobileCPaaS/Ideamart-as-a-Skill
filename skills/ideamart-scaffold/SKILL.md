@@ -37,13 +37,20 @@ config file from your language's directory. Requirements:
 - Validate at startup and **fail loudly** on anything missing.
 - `.env` git-ignored; `.env.example` placeholders only.
 
-## 4. One client, one `post()` helper
+## 4. One client, one `post()` helper — generate it
 
-Copy the client from the same directory. Every service is a thin wrapper over a single `post()`
-that injects credentials, sets a timeout, retries only transient codes, and raises a typed error
-on non-`S1000`. Success is decided by `statusCode`, never by the HTTP status.
+```bash
+node tools/ideamart.mjs codegen client --lang=<language> --out=<your integration dir>
+node tools/ideamart.mjs codegen errors --lang=<language> --out=<same dir>
+```
 
-Get each contract with `node tools/ideamart.mjs show <id>` — do not recall parameter names.
+That is every service wrapper over a single `post()` that injects credentials, sets a timeout
+and raises a typed error on non-`S1000`, plus all 86 status codes with their handling classes.
+Adapt it to the project's conventions — swap in the project's HTTP client, logger and config
+loader — but keep the `statusCode` branching and the benign codes exactly as generated.
+
+Generating one call at a time: `node tools/ideamart.mjs codegen <service-id> --lang=<language>`.
+Never recall parameter names; `show <id>` has the exact contract.
 
 ## 5. Callbacks
 
@@ -58,6 +65,11 @@ node tools/ideamart.mjs validate <id> '<payload you generated>'
 
 Both scripts are plain curl, so they verify a handler in any language. For a port into a stack
 with no template, finish with the acceptance checklist in `references/11-any-stack.md`.
+
+No provisioned application yet? Everything above still works except the live calls. If — and
+only if — the developer asks for one, build a local mock server that answers every endpoint
+from the catalog's sample responses and can return `E1303` / `E1313` / `E1378` / a timeout on
+demand; point the `IDEAMART_*_URL` variables at it. Do not create one unprompted.
 
 Match the host project's stack and conventions. The templates are a specification, not a
 framework to impose.

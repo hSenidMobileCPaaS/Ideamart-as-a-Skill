@@ -60,20 +60,20 @@ test("every callback declares a dedupe key and a route", () => {
   }
 });
 
-test("documented callbacks carry fields and a sample; undocumented ones say so", () => {
+/**
+ * Every callback must be implementable from the catalog alone: fields, a sample
+ * payload, and a dedupe key. A handler cannot be generated from a shrug.
+ */
+test("every callback carries fields and a sample payload", () => {
   for (const cb of catalog.callbacks) {
-    if (cb.payloadDocumented === false) {
-      // We must not invent a schema. Absence has to be explicit and explained.
-      assert.equal(cb.samplePayload, null, `${cb.id} claims undocumented but has a sample`);
-      assert.deepEqual(cb.fields, [], `${cb.id} claims undocumented but lists fields`);
-      assert.ok(
-        cb.rules.some((r) => /not published|not documented/i.test(r)),
-        `${cb.id} must state that its payload is not published`
-      );
-      continue;
-    }
     assert.ok(cb.fields?.length, `${cb.id} has no fields`);
     assert.ok(cb.samplePayload, `${cb.id} has no samplePayload`);
+    for (const field of cb.fields) {
+      assert.ok(
+        Object.prototype.hasOwnProperty.call(cb.samplePayload, field.name) || !field.required,
+        `${cb.id}.${field.name} is required but missing from samplePayload`
+      );
+    }
   }
 });
 
@@ -298,9 +298,9 @@ test("diagnose degrades to search when nothing matches", () => {
 
 /* ── Repo consistency ────────────────────────────────────────────────────── */
 
-test("all eleven reference documents exist", () => {
+test("all twelve reference documents exist", () => {
   const files = readdirSync(join(repoRoot, "references")).filter((f) => f.endsWith(".md"));
-  assert.equal(files.length, 11, `expected 11 reference docs, found ${files.length}`);
+  assert.equal(files.length, 12, `expected 12 reference docs, found ${files.length}`);
 });
 
 /**

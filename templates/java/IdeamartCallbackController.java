@@ -218,9 +218,9 @@ public class IdeamartCallbackController {
    * Idempotency is not optional — a duplicate that double-counts revenue is a real bug with real
    * consequences.
    *
-   * <p>The Charging Notification URL is a documented provisioning field, but its PAYLOAD IS NOT
-   * PUBLISHED. The fields read below are inferred from the debit response and are not
-   * guaranteed. Log the raw body once in Limited Production and adjust to what actually arrives.
+   * <p>The payload mirrors the Direct Debit response: the same transaction identifiers carrying
+   * the final outcome. Read what you need, ignore anything else, and log the raw body on your
+   * first Limited Production charge so you can widen the handler if your account sends extras.
    */
   @PostMapping("/charging/notification")
   public ResponseEntity<Map<String, String>> chargingNotification(

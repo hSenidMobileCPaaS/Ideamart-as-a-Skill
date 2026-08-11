@@ -9,9 +9,11 @@ Ideamart POSTs to URLs you register during provisioning. Skip these and MO SMS n
 USSD does not work, and you never learn that a subscriber left or a charge failed.
 
 ```bash
-node tools/ideamart.mjs list --direction=inbound   # all five
-node tools/ideamart.mjs show ussd-receive          # payload + rules
-node tools/ideamart.mjs curl sms-mo                # a test command for your handler
+node tools/ideamart.mjs list --direction=inbound            # all five
+node tools/ideamart.mjs show ussd-receive                   # payload + rules
+node tools/ideamart.mjs codegen callbacks --lang=<language> # all five handlers, written
+node tools/ideamart.mjs codegen ussd-receive --lang=<lang>  # just one
+node tools/ideamart.mjs curl sms-mo                         # a test command for your handler
 ```
 
 ## The contract — identical for all five

@@ -50,7 +50,7 @@ echo
 echo "── Valid payloads ──────────────────────────────────────"
 
 check "MO SMS" /api/ideamart/sms/mo \
-  "{\"message\":\"my testing message\",\"sourceAddress\":\"tel:94771234567\",\"requestId\":\"APP_000001\",\"encoding\":\"0\",\"version\":\"1.0\",\"applicationId\":\"$APP_ID\"}"
+  "{\"message\":\"my testing message\",\"sourceAddress\":\"tel:94771234567\",\"requestId\":\"22607072011552911\",\"encoding\":\"0\",\"version\":\"1.0\",\"applicationId\":\"$APP_ID\"}"
 
 check "Delivery report (DELIVERED)" /api/ideamart/sms/dlr \
   '{"destinationAddress":"tel:94771234567","timeStamp":"20120113082110","requestId":"MSG_000111","deliveryStatus":"DELIVERED"}'

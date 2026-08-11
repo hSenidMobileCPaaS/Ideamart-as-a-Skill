@@ -160,7 +160,7 @@ callback URL. Match it to the original send via `requestId`.
 | Parameter | Description | Mandatory |
 |---|---|---|
 | `destinationAddress` | Subscriber address | Mandatory |
-| `timeStamp` | Documented as `yyMMddHHmm`; samples show 14-digit `yyyyMMddHHmmss`. **Parse both lengths leniently.** | Mandatory |
+| `timeStamp` | Time of the delivery event. Arrives as 10 digits (`yyMMddHHmm`) or 14 (`yyyyMMddHHmmss`) — **parse on length**. | Mandatory |
 | `requestId` | Ties the report back to the original send | Mandatory |
 | `deliveryStatus` | See enum below | Mandatory |
 

@@ -115,11 +115,10 @@ Failure response — note there are no coordinates:
 
 ### Implementation notes
 
-- **`latitude` and `longitude` are strings** — parse them, and do not assume the field order
-  matches convention. In the official sample the values are `"latitude": "79.948944"` and
-  `"longitude": "6.707778"`, but for Sri Lanka latitude is ~6–10 and longitude is ~79–82, so
-  the sample's values appear transposed. **Sanity-check coordinates against the expected
-  region before using them**, and log anything out of range rather than plotting it.
+- **`latitude` and `longitude` are strings** — parse them, then range-check before use. Sri
+  Lanka is latitude **5.9–9.9** and longitude **79.5–81.9**; anything outside that is a bad fix
+  or a swapped pair, so log it and discard rather than plotting it. One validation helper at the
+  parse boundary is all this takes.
 - **Check `latitude`/`longitude` exist before reading them.** They are absent on every failure.
 - **`freshness` is age in minutes** — a large value means you got a cached fix, not a live one.
   Decide a maximum acceptable age for your use case and reject staler results.

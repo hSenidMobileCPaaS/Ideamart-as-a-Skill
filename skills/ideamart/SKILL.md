@@ -12,11 +12,17 @@ as JSON-over-HTTPS APIs.
 ## Do this first — do not recall parameter names, query them
 
 ```bash
-node tools/ideamart.mjs list                 # what exists
-node tools/ideamart.mjs show <id>            # exact contract
+node tools/ideamart.mjs list                          # what exists
+node tools/ideamart.mjs show <id>                     # exact contract
+node tools/ideamart.mjs codegen <id> --lang=<lang>    # write the call for me
 node tools/ideamart.mjs validate <id> '<json>'
 node tools/ideamart.mjs code <statusCode>
 ```
+
+`codegen` targets: any service or callback id, or `client` / `errors` / `types` / `config` /
+`callbacks`. Languages: typescript, python, java, go, php, csharp. Generated code carries the
+credential injection, the timeout, the `tel:` normaliser, the benign codes and the `statusCode`
+branching, so it cannot drift from the contract.
 
 Full command list: `node tools/ideamart.mjs help`. Add `--json` for machine-readable output.
 If you cannot run commands, or Node is not installed, read `catalog/ideamart-api.json` — same
@@ -50,9 +56,12 @@ seven components language-neutrally, with an acceptance checklist for stacks wit
 
 ## Where the detail lives
 
-`references/01-getting-started.md` through `11-any-stack.md`, and the per-language
-implementations in `templates/`. Read the reference for the service you are building before
-writing code.
+`references/01-getting-started.md` through `12-implementation-playbook.md`, and the
+per-language implementations in `templates/`. Read the reference for the service you are
+building before writing code.
+
+Taking a project from nothing to production — or adding Ideamart to an app that already has
+users — is `references/12-implementation-playbook.md`.
 
 Related skills: `ideamart-scaffold`, `ideamart-callbacks`, `ideamart-review`,
 `ideamart-debug`, `ideamart-golive`.

@@ -45,6 +45,7 @@
   ],
   "scripts": {
     "ideamart": "node tools/ideamart.mjs",
+    "codegen": "node tools/ideamart.mjs codegen",
     "test": "node --test tests/*.test.js",
     "sync": "node scripts/sync-rules.mjs",
     "check": "node scripts/sync-rules.mjs --check && npm test"

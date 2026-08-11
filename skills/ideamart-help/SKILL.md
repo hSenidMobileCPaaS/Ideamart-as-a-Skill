@@ -22,6 +22,7 @@ command for machine-readable output.
 | `show <id>` | What exactly does this call take and return? |
 | `search "<query>"` | Which service does the thing I want? |
 | `curl <id> [k=v]` | Give me a valid, runnable request. |
+| `codegen <what> --lang=<x>` | Write the code for me. |
 | `validate <id> '<json>'` | Is this payload correct? |
 | `code <statusCode>` | What does this error mean and what do I do? |
 | `diagnose "<symptom>"` | Why is this not working? |
@@ -54,7 +55,18 @@ command for machine-readable output.
 
 `01-getting-started` · `02-sms` · `03-ussd` · `04-subscription` · `05-caas` · `06-lbs-ivr` ·
 `07-callbacks` · `08-status-codes` · `09-security-best-practices` · `10-production-checklist` ·
-`11-any-stack`
+`11-any-stack` · `12-implementation-playbook`
+
+## Code generation
+
+```bash
+node tools/ideamart.mjs codegen client --lang=python     # every service + post() + config
+node tools/ideamart.mjs codegen errors --lang=java       # all 86 status codes, classified
+node tools/ideamart.mjs codegen ussd-send --lang=go      # one call
+```
+
+Targets: any service or callback id, or `client` / `errors` / `types` / `config` / `callbacks`.
+Languages: typescript, python, java, go, php, csharp. `--out=<dir>` writes files.
 
 ## Languages
 

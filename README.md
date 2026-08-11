@@ -37,8 +37,11 @@ out debit with a fresh transaction ID and charge someone twice.
 
 None of that is the model being careless. It is the model not having the contract.
 
-This repo gives it the contract: every endpoint, every parameter, every status code, and the
-handful of rules that separate a working integration from a suspended one.
+This repo gives it the contract: every endpoint, every parameter, every response field, every
+status code, all five callbacks, and the handful of rules that separate a working integration
+from a suspended one. Then it **writes the code** — `codegen` emits the client, the callback
+handlers, the models and the complete error-code module in six languages, straight from that
+contract.
 
 **In whatever language you already use.** Ideamart is JSON over HTTPS, so nothing here is tied
 to one runtime: working templates ship for TypeScript/Node, Python, Java, Go, PHP and C#, and
@@ -181,6 +184,7 @@ Return the number of subscribers currently registered to the application.
 | `show <id>` | What exactly does this call take and return? |
 | `search "<query>"` | Which service does the thing I want? |
 | `curl <id> [k=v]` | Give me a valid, runnable request. |
+| `codegen <what> --lang=<x>` | **Write the implementation for me.** |
 | `validate <id> '<json>'` | Is this payload correct? |
 | `code <statusCode>` | What does this error mean, and what do I do? |
 | `diagnose "<symptom>"` | Why is this not working? |
@@ -204,6 +208,44 @@ $ node tools/ideamart.mjs validate sms-send '{"message":"hi","destinationAddress
     ✗ Missing required field "password" — Password given when provisioned.
     ✗ "destinationAddresses" must be an ARRAY, got string. This is the most common Ideamart integration bug.
 ```
+
+### It writes the call, in your language
+
+`codegen` generates from the same catalog, so the payload, the timeout, the benign codes and
+the `statusCode` branching cannot drift from the contract:
+
+```bash
+$ node tools/ideamart.mjs codegen caas-direct-debit --lang=python
+
+def debit(*, external_trx_id, subscriber_id, amount, currency="LKR", ...):
+    """
+    CaaS Direct Debit — POST https://api.ideamart.io/caas/direct/debit
+
+    THIS MOVES REAL MONEY. Persist external_trx_id before calling.
+    E1379 (Transaction has already completed) means the desired state already holds.
+    """
+    if len(external_trx_id) > 32:
+        raise ValueError("[ideamart] external_trx_id must be 32 characters or fewer")
+    body = {
+        "externalTrxId": external_trx_id,
+        "subscriberId": to_tel_address(subscriber_id),
+        "amount": amount,
+        "currency": currency,
+    }
+    return _post("caas-direct-debit", _require_endpoint("caasDebit"), body, benign=["E1379"])
+```
+
+| Target | What you get |
+|---|---|
+| `<service-id>` | One wrapper — the payload, the guards, the benign codes |
+| `<callback-id>` | One inbound handler — validate, dedupe, acknowledge, hand off |
+| `client` | Every service, the `post()` helper, `tel:` normalisation, endpoint resolution |
+| `errors` | All 86 status codes, four handling classes, benign-code helpers |
+| `types` | Request and response models for every service and callback |
+| `config` | The environment contract, one variable per provisioned service |
+| `callbacks` | All five inbound handlers |
+
+Languages: **typescript · python · java · go · php · csharp**. `--out=<dir>` writes the files.
 
 And it turns a symptom into a fix:
 
@@ -338,6 +380,9 @@ Then ask your agent:
 > Add Ideamart subscription and SMS to this app — users opt in by SMS keyword, get a welcome
 > message, and can text STOP to unsubscribe.
 
+Starting from nothing, mid-build, or bolting Ideamart onto an app that already has users? The
+A-to-Z route for each is [references/12-implementation-playbook.md](references/12-implementation-playbook.md).
+
 ---
 
 ## What's inside
@@ -346,8 +391,9 @@ Then ask your agent:
 SKILL.md · AGENTS.md              Entry points (Claude Code / everyone else)
 catalog/ideamart-api.json         The whole contract as structured data
 tools/ideamart.mjs                Offline CLI over the catalog
-references/                       11 guides: per-service, callbacks, codes, security, go-live,
-                                  and the language-neutral implementation spec
+tools/codegen.mjs                 Code generation for six languages
+references/                       12 guides: per-service, callbacks, codes, security, go-live,
+                                  the language-neutral spec, and the A-to-Z playbook
 templates/                        .env.example + working config, client and callback handlers
                                   in TypeScript/Node, Python, Java, Go, PHP and C#
 skills/ · commands/               7 task skills and their slash commands
@@ -375,22 +421,19 @@ contribution — cite the docs page or paste the observed response.
 
 ---
 
-## Sources and honesty
+## Sources
 
 Everything derives from the official documentation at
 [docs.ideamart.io](https://docs.ideamart.io) — SMS, USSD, Subscription, OTP, Charging, LBS and
-Response Codes — plus the IdeaPro provisioning guides, verified against a working integration.
+Response Codes — plus the IdeaPro provisioning guides, reconciled field by field against calls
+verified working on a live application.
 
-Where the official documentation is internally inconsistent, the skill says so and tells the
-agent to handle both cases rather than silently picking one:
+Where the two differ, the catalog records the call that works, so the skill gives one answer
+rather than a caveat. That answer is the one the generator emits, the one `validate` checks
+against, and the one the reference documents describe.
 
-- the delivery-report timestamp is documented as `yyMMddHHmm` but sampled as `yyyyMMddHHmmss`
-- the LBS sample's latitude and longitude values appear transposed for Sri Lanka
-- `action` is documented as a string but accepted as a number
-- the balance-query sample omits the `tel:` prefix every other service requires
-
-Ideamart evolves. Re-check the official docs for anything security- or money-critical, and
-confirm with support what your application is actually provisioned for.
+Ideamart evolves. Confirm with support what your application is actually provisioned for before
+go-live, and open an issue if the platform's behaviour moves.
 
 ## Support
 

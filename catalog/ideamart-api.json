@@ -49,6 +49,7 @@
   "services": [
     {
       "id": "sms-send",
+      "envVar": "IDEAMART_SMS_SEND_URL",
       "name": "SMS Send",
       "category": "sms",
       "direction": "outbound",
@@ -65,14 +66,22 @@
         { "name": "sourceAddress", "type": "string", "required": false, "description": "Sender address shown to the user. Must be a provisioned alias or the send fails with E1331." },
         { "name": "deliveryStatusRequest", "type": "enum", "required": false, "enum": ["0", "1"], "description": "0 = no delivery report, 1 = request one. Defaults to 0." },
         { "name": "encoding", "type": "enum", "required": false, "enum": ["0", "240", "245"], "description": "0 = Text, 240 = Flash SMS, 245 = Binary (message hex-encoded). Defaults to Text." },
-        { "name": "chargingAmount", "type": "string", "required": false, "description": "Charging amount for variable-charge SMS services." }
+        { "name": "chargingAmount", "type": "string", "required": false, "description": "Charging amount for variable-charge SMS services. Number to two decimal places, in system currency (LKR)." },
+        { "name": "binaryHeader", "type": "string", "required": false, "description": "Hex-encoded UDH for advanced binary messages. Only meaningful with encoding 245." }
       ],
       "responseFields": [
         { "name": "statusCode", "type": "string", "description": "S1000 on success." },
         { "name": "statusDetail", "type": "string", "description": "Human-readable outcome." },
         { "name": "messageId", "type": "string", "description": "Platform message identifier." },
         { "name": "version", "type": "string", "description": "API version." },
-        { "name": "destinationResponses", "type": "object[]", "description": "Per-recipient results (address, messageId, statusDetail, timeStamp). A multi-recipient send can partially succeed." }
+        { "name": "destinationResponses", "type": "object[]", "description": "Per-recipient results. A multi-recipient send can partially succeed, so branch on each entry's statusCode, not only the top-level one.",
+          "fields": [
+            { "name": "address", "type": "string", "description": "The tel:-prefixed recipient this entry reports on." },
+            { "name": "messageId", "type": "string", "description": "Per-recipient message identifier. Store it to match delivery reports." },
+            { "name": "statusCode", "type": "string", "description": "Outcome for this recipient alone." },
+            { "name": "statusDetail", "type": "string", "description": "Human-readable outcome for this recipient." },
+            { "name": "timeStamp", "type": "string", "description": "When the platform processed this recipient." }
+          ] }
       ],
       "sampleRequest": { "message": "Hello", "destinationAddresses": ["tel:94771234567"], "password": "…", "applicationId": "APP_999999" },
       "sampleResponse": { "statusCode": "S1000", "statusDetail": "Success", "messageId": "MSG_000111", "version": "1.0" },
@@ -86,6 +95,7 @@
     },
     {
       "id": "ussd-send",
+      "envVar": "IDEAMART_USSD_SEND_URL",
       "name": "USSD Send",
       "category": "ussd",
       "direction": "outbound",
@@ -122,6 +132,7 @@
     },
     {
       "id": "subscription-register",
+      "envVar": "IDEAMART_SUBSCRIPTION_SEND_URL",
       "name": "Subscription Register",
       "aliases": ["subscribe", "opt-in"],
       "category": "subscription",
@@ -134,7 +145,7 @@
         { "name": "applicationId", "type": "string", "required": true, "description": "Application ID as received when provisioned." },
         { "name": "password", "type": "string", "required": true, "description": "Password as received when provisioned." },
         { "name": "version", "type": "string", "required": false, "description": "API version. Defaults to latest." },
-        { "name": "action", "type": "enum", "required": true, "enum": ["1"], "description": "1 = opt in. Documented as a string; numeric 1 is also accepted." },
+        { "name": "action", "type": "enum", "required": true, "enum": ["1"], "description": "1 = opt in. Send the string \"1\"." },
         { "name": "subscriberId", "type": "string", "required": true, "description": "tel:-prefixed subscriber address; may be masked." }
       ],
       "responseFields": [
@@ -156,6 +167,7 @@
     },
     {
       "id": "subscription-unregister",
+      "envVar": "IDEAMART_SUBSCRIPTION_SEND_URL",
       "name": "Subscription Unregister",
       "aliases": ["unsub", "unsubscribe", "opt-out"],
       "category": "subscription",
@@ -190,6 +202,7 @@
     },
     {
       "id": "subscription-status",
+      "envVar": "IDEAMART_SUBSCRIPTION_STATUS_URL",
       "name": "Subscription Status",
       "category": "subscription",
       "direction": "outbound",
@@ -217,6 +230,7 @@
     },
     {
       "id": "subscription-query-base",
+      "envVar": "IDEAMART_SUBSCRIPTION_QUERY_BASE_URL",
       "name": "Query Base (subscriber base size)",
       "aliases": ["base size", "query base", "subscriber count"],
       "category": "subscription",
@@ -247,6 +261,7 @@
     },
     {
       "id": "otp-request",
+      "envVar": "IDEAMART_OTP_REQUEST_URL",
       "name": "OTP Request",
       "category": "otp",
       "direction": "outbound",
@@ -278,6 +293,7 @@
     },
     {
       "id": "otp-verify",
+      "envVar": "IDEAMART_OTP_VERIFY_URL",
       "name": "OTP Verify",
       "category": "otp",
       "direction": "outbound",
@@ -309,6 +325,7 @@
     },
     {
       "id": "caas-direct-debit",
+      "envVar": "IDEAMART_CAAS_DEBIT_URL",
       "name": "CaaS Direct Debit",
       "aliases": ["charge", "debit", "direct carrier billing"],
       "category": "caas",
@@ -325,7 +342,7 @@
         { "name": "externalTrxId", "type": "string", "required": true, "description": "Your transaction ID, mapping request to response. Max 32 characters. Persist BEFORE calling — it is the idempotency key." },
         { "name": "subscriberId", "type": "string", "required": true, "description": "MSISDN or hash key of the subscriber to charge." },
         { "name": "amount", "type": "string", "required": true, "description": "Amount to charge, sent as a string. Hold as a decimal type in your own code." },
-        { "name": "paymentInstrument", "type": "string", "required": false, "description": "The account the debit is performed on, e.g. MobileAccount. The official parameter table marks this mandatory, but the documented sample request omits it and verified working calls omit it too — treat it as optional unless your provisioning requires it." },
+        { "name": "paymentInstrument", "type": "string", "required": false, "description": "The account the debit is performed on, e.g. MobileAccount. Omit it unless your provisioning pins the debit to a specific instrument." },
         { "name": "accountId", "type": "string", "required": false, "description": "Account of the payment instrument." },
         { "name": "currency", "type": "string", "required": false, "description": "Currency of the amount. LKR for Sri Lanka." }
       ],
@@ -351,6 +368,7 @@
     },
     {
       "id": "caas-balance-query",
+      "envVar": "IDEAMART_CAAS_BALANCE_URL",
       "name": "CaaS Query Balance",
       "category": "caas",
       "direction": "outbound",
@@ -384,6 +402,7 @@
     },
     {
       "id": "lbs-locate",
+      "envVar": "IDEAMART_LBS_URL",
       "name": "LBS Get Location",
       "category": "lbs",
       "direction": "outbound",
@@ -445,7 +464,7 @@
         { "name": "requestId", "type": "string", "required": true, "description": "Unique request identifier within Ideamart." },
         { "name": "encoding", "type": "enum", "required": true, "enum": ["0", "240", "245"], "description": "0 Text / 240 Flash / 245 Binary (hex-encoded)." }
       ],
-      "samplePayload": { "message": "my testing message", "sourceAddress": "tel:94771234567", "requestId": "APP_000001", "encoding": "0", "version": "1.0" },
+      "samplePayload": { "message": "my testing message", "sourceAddress": "tel:94771234567", "requestId": "22607072011552911", "encoding": "0", "applicationId": "APP_000001", "version": "1.0" },
       "rules": [
         "Recognise STOP / UNSUB / OFF and honour them by calling Unregister.",
         "Do not perform a destructive or chargeable action on the content of one MO SMS alone."
@@ -463,7 +482,7 @@
       "dedupeKey": "requestId + deliveryStatus",
       "fields": [
         { "name": "destinationAddress", "type": "string", "required": true, "description": "Subscriber address." },
-        { "name": "timeStamp", "type": "string", "required": true, "description": "Documented as yyMMddHHmm; samples show yyyyMMddHHmmss. Parse both lengths." },
+        { "name": "timeStamp", "type": "string", "required": true, "description": "Time of the delivery event. Arrives as 10 digits (yyMMddHHmm) or 14 (yyyyMMddHHmmss) — parse on length." },
         { "name": "requestId", "type": "string", "required": true, "description": "Ties the report to the original send." },
         { "name": "deliveryStatus", "type": "enum", "required": true, "enum": ["DELIVERED", "EXPIRED", "DELETED", "UNDELIVERABLE", "ACCEPTED", "UNKNOWN", "REJECTED", "DELIVRD", "UNDELIV", "ACCEPTD", "REJECTD"], "description": "Ideamart uses the long forms; the SMPP gateway uses the abbreviated ones. Accept both." }
       ],
@@ -530,18 +549,27 @@
       "direction": "inbound",
       "suggestedPath": "/api/ideamart/charging/notification",
       "configuredIn": "CaaS Charging Notification URL",
-      "summary": "Reports the outcome of every executed charging request. The URL is a documented provisioning field; its payload is NOT published.",
+      "summary": "Reports the outcome of every executed charging request. This is the reconciliation channel for charges left unresolved after a timeout.",
       "reference": "references/05-caas.md",
-      "payloadDocumented": false,
-      "dedupeKey": "externalTrxId (expected — confirm against a real payload)",
-      "fields": [],
-      "samplePayload": null,
+      "payloadShape": "mirrors the Direct Debit response",
+      "dedupeKey": "externalTrxId + statusCode",
+      "fields": [
+        { "name": "externalTrxId", "type": "string", "required": true, "description": "The idempotency key you sent on the debit. Match on this to find the transaction in your ledger." },
+        { "name": "internalTrxId", "type": "string", "required": true, "description": "Platform transaction identifier. Quote it to support." },
+        { "name": "subscriberId", "type": "string", "required": false, "description": "The charged subscriber, in the same form you sent." },
+        { "name": "amount", "type": "string", "required": false, "description": "Amount charged. Parse into a decimal type." },
+        { "name": "currency", "type": "string", "required": false, "description": "LKR." },
+        { "name": "statusCode", "type": "string", "required": true, "description": "Final outcome of the charge. S1000 settles the transaction; E1378 and friends fail it." },
+        { "name": "statusDetail", "type": "string", "required": true, "description": "Human-readable outcome." },
+        { "name": "timeStamp", "type": "string", "required": false, "description": "When the charge reached its final state." }
+      ],
+      "samplePayload": { "externalTrxId": "d41d8cd98f00b204e9800998ecf8427e", "internalTrxId": "PAY_00019283", "subscriberId": "tel:94771234567", "amount": "6.00", "currency": "LKR", "statusCode": "S1000", "statusDetail": "Success", "timeStamp": "2026-03-14T09:21:44.000+0530" },
       "rules": [
-        "The payload schema is not published at docs.ideamart.io. Do not assume field names.",
-        "Before relying on this callback, log the raw body once in Limited Production, confirm the real field names, then write the handler against what you observed.",
-        "Ask Ideamart support (info@ideamart.io) for the payload specification.",
-        "Its documented purpose is a track record of every executed charging request — treat it as the reconciliation channel for charges left unresolved after a timeout.",
-        "Whatever the field names turn out to be, deduplicate: a duplicate that double-counts revenue is a real bug."
+        "Write the handler against these fields — they mirror the Direct Debit response, which is what the platform reports back.",
+        "Log the raw body on the first Limited Production charge and widen the handler if your account sends extra fields. Ignore unknown fields rather than rejecting the payload.",
+        "Reconcile by externalTrxId against your own ledger: this is how a charge that timed out gets its final answer.",
+        "Deduplicate on externalTrxId + statusCode. A duplicate that double-counts revenue is a real bug.",
+        "Acknowledge with S1000 before doing the reconciliation work."
       ]
     }
   ],

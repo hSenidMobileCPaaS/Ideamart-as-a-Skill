@@ -34,14 +34,23 @@ request/response pair with credentials and MSISDNs redacted.
 
 ## For hSenid Mobile maintainers
 
-The catalog is the source of truth. `catalog/ideamart-api.json` drives the CLI, the tests and
-much of the documentation. When a contract changes:
+The catalog is the source of truth. `catalog/ideamart-api.json` drives the CLI, the code
+generator, the tests and much of the documentation. When a contract changes:
 
 1. Edit `catalog/ideamart-api.json`.
 2. Update the matching `references/*.md` so prose and data agree.
 3. Run `npm test` — the suite checks that every referenced status code exists, every parameter
-   is fully specified, every documented sample validates against its own schema, and every
-   referenced file is present.
+   is fully specified, every documented sample validates against its own schema, every callback
+   has fields and a sample payload, every referenced file is present, and every service still
+   generates working code in all six languages.
+
+A contract fix reaches generated code for free: `tools/codegen.mjs` reads the catalog, so
+`ideamart codegen` output follows the same day. Never hand-edit generated output — fix the
+catalog or the emitter.
+
+Where the official documentation and a verified working call disagree, the catalog records the
+call that works, with no caveat in the text. The skill gives one answer; a hedge in a parameter
+description is a bug.
 
 Agent rule files are generated. `AGENTS.md` is the single source; the Cursor, Windsurf, Cline,
 Kiro, Qoder, Copilot and `.agents` copies come from it:

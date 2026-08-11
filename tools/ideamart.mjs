@@ -23,7 +23,9 @@
  *   help
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { LANGUAGES, TARGETS, generate } from "./codegen.mjs";
 import {
   allEntries,
   buildPayload,
@@ -377,6 +379,7 @@ function cmdReference() {
       "01-getting-started", "02-sms", "03-ussd", "04-subscription", "05-caas",
       "06-lbs-ivr", "07-callbacks", "08-status-codes",
       "09-security-best-practices", "10-production-checklist", "11-any-stack",
+      "12-implementation-playbook",
     ];
     return out({ documents: docs }, (d) => {
       console.log(`\n  ${bold("Reference documents")}\n`);
@@ -412,6 +415,51 @@ function cmdPlatform() {
   });
 }
 
+/**
+ * Emit ready-to-paste implementation code, generated from the catalog.
+ *
+ *   codegen <service|callback|client|errors|types|config|callbacks> --lang=<x>
+ *
+ * --out=<dir> writes the file instead of printing it.
+ */
+function cmdCodegen() {
+  const positional = rest.filter((a) => !a.startsWith("--"));
+  const flag = (name) => {
+    const hit = rest.find((a) => a.startsWith(`--${name}=`));
+    return hit ? hit.slice(name.length + 3) : null;
+  };
+
+  const target = positional[0] || "client";
+  const language = flag("lang") || positional[1];
+
+  if (!language) {
+    return fail("Pick a language: --lang=" + Object.keys(LANGUAGES).join("|"), {
+      languages: Object.keys(LANGUAGES),
+      targets: TARGETS,
+    });
+  }
+
+  let result;
+  try {
+    result = generate(target, language);
+  } catch (err) {
+    return fail(err.message, { languages: Object.keys(LANGUAGES), targets: TARGETS });
+  }
+
+  const outDir = flag("out");
+  if (outDir) {
+    mkdirSync(outDir, { recursive: true });
+    const path = join(outDir, result.filename);
+    writeFileSync(path, result.code);
+    return out({ ...result, path, code: undefined }, () =>
+      console.log(`\n  ${green("wrote")} ${path}  ${dim(`(${result.language}, ${result.target})`)}\n`)
+    );
+  }
+
+  if (JSON_MODE) return out(result);
+  console.log(result.code);
+}
+
 function cmdHelp() {
   console.log(`
   ${bold("ideamart")} — offline reference for the Ideamart API ${dim(`(catalog v${catalog.catalogVersion})`)}
@@ -428,6 +476,11 @@ function cmdHelp() {
   ${bold("BUILD")}
     curl <id> [key=value ...]                        Build a runnable request
     validate <id> <json|@file|->                     Check a payload against the spec
+    codegen <what> --lang=<language> [--out=<dir>]   Emit ready-to-paste code
+
+      what      client | errors | types | config | callbacks
+                or one service/callback id (e.g. caas-direct-debit, ussd-receive)
+      language  typescript | python | java | go | php | csharp
 
   ${bold("DEBUG")}
     code <statusCode>                                Decode a status code
@@ -446,6 +499,9 @@ function cmdHelp() {
     ${dim("$")} node tools/ideamart.mjs diagnose "callbacks never arrive"
     ${dim("$")} node tools/ideamart.mjs curl sms-send destinationAddresses='["tel:94771234567"]' message="Hi"
     ${dim("$")} node tools/ideamart.mjs validate sms-send '{"message":"hi","destinationAddresses":"tel:94771234567"}'
+    ${dim("$")} node tools/ideamart.mjs codegen caas-direct-debit --lang=python
+    ${dim("$")} node tools/ideamart.mjs codegen errors --lang=java
+    ${dim("$")} node tools/ideamart.mjs codegen client --lang=go --out=./internal/ideamart
 
   ${dim("Add --json to any command for machine-readable output.")}
   ${dim("Offline and read-only: no network calls, and it never sees your credentials.")}
@@ -474,6 +530,9 @@ const COMMANDS = {
   build: cmdCurl,
   validate: cmdValidate,
   check: cmdValidate,
+  codegen: cmdCodegen,
+  generate: cmdCodegen,
+  gen: cmdCodegen,
   practices: cmdPractices,
   checklist: cmdChecklist,
   reference: cmdReference,

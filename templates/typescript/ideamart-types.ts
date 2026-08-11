@@ -86,7 +86,7 @@ export type DeliveryStatus =
 /** Inbound: delivery report. */
 export interface DeliveryReportCallback {
   destinationAddress: string;
-  /** Documented as yyMMddHHmm; samples show yyyyMMddHHmmss. Parse leniently. */
+  /** 10 digits (yyMMddHHmm) or 14 (yyyyMMddHHmmss). Parse on length. */
   timeStamp: string;
   /** Matches the requestId/messageId from the original send. */
   requestId: string;

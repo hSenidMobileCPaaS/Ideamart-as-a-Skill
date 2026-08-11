@@ -62,6 +62,7 @@ node tools/ideamart.mjs show <id>                    # full contract: params, re
 node tools/ideamart.mjs search "<query>"             # find by intent, e.g. "base size"
 node tools/ideamart.mjs curl <id> [key=value ...]    # build a valid, runnable request
 node tools/ideamart.mjs validate <id> '<json>'       # check a payload against the spec
+node tools/ideamart.mjs codegen <what> --lang=<x>    # emit ready-to-paste code (see below)
 node tools/ideamart.mjs code <statusCode>            # decode a status code + the fix
 node tools/ideamart.mjs diagnose "<symptom>"         # cause and fix from a symptom
 node tools/ideamart.mjs practices [severity]         # security and reliability rules
@@ -70,13 +71,37 @@ node tools/ideamart.mjs reference <doc>              # print a reference documen
 node tools/ideamart.mjs platform                     # base URLs, operators, conventions
 ```
 
+## Write the call, do not hand-roll it
+
+`codegen` emits working code straight from the contract, so the payload, the benign codes, the
+timeout and the `statusCode` branching cannot drift from the spec. Prefer it over writing a
+call from memory, then adapt the result to the project's conventions.
+
+```bash
+node tools/ideamart.mjs codegen <service-id>  --lang=<language>   # one wrapper, e.g. caas-direct-debit
+node tools/ideamart.mjs codegen client        --lang=<language>   # every service + post() + config
+node tools/ideamart.mjs codegen errors        --lang=<language>   # all 86 status codes, classified
+node tools/ideamart.mjs codegen types         --lang=<language>   # request/response models
+node tools/ideamart.mjs codegen callbacks     --lang=<language>   # all five inbound handlers
+node tools/ideamart.mjs codegen <callback-id> --lang=<language>   # one handler, e.g. ussd-receive
+```
+
+Languages: `typescript`, `python`, `java`, `go`, `php`, `csharp`. Add `--out=<dir>` to write
+files instead of printing. For a stack with no emitter, generate the closest one and port it —
+the shape is identical everywhere.
+
 `--json` on any command for machine-readable output. If you cannot run commands — or Node is
 not available — read `catalog/ideamart-api.json` directly; it is plain JSON and holds the same
 data. The CLI is a documentation reader, not part of the integration: it makes no network
 calls, never sees a credential, and puts no constraint on the stack you build in.
 
-**Working order:** `search`/`list` to find the service → `show` for the exact contract → write
-the code → `validate` the payload you generated → `code`/`diagnose` when something fails.
+**Working order:** `search`/`list` to find the service → `show` for the exact contract →
+`codegen` the call → `validate` the payload it produces → `code`/`diagnose` when something
+fails.
+
+**Whole-integration order:** [references/12-implementation-playbook.md](references/12-implementation-playbook.md)
+takes a project from nothing to production, and covers the three starting points — greenfield,
+mid-build, and retrofitting Ideamart into a live application.
 
 ## How to approach an Ideamart task
 
@@ -238,6 +263,7 @@ Read the one that matches the task. Do not guess parameter names — they are al
 | [09-security-best-practices.md](references/09-security-best-practices.md) | Secrets, TLS, PII, logging, consent, rate limits |
 | [10-production-checklist.md](references/10-production-checklist.md) | Pre-go-live verification |
 | [11-any-stack.md](references/11-any-stack.md) | The integration specified language-neutrally: the seven components, per-language notes, port acceptance checklist |
+| [12-implementation-playbook.md](references/12-implementation-playbook.md) | A to Z: greenfield / mid-build / retrofit, the four flow recipes, testing without an account, go-live |
 
 Templates in [templates/](templates/README.md) are working reference implementations of the
 same integration — config, client, callback handlers and session store — in **TypeScript/Node,

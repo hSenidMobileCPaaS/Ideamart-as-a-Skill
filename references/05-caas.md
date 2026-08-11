@@ -59,14 +59,13 @@ Content-Type: application/json
 | `externalTrxId` | **Your** transaction ID, mapping request to response | String | **M** |
 | `subscriberId` | MSISDN or hash key of the subscriber to charge | String | **M** |
 | `amount` | Amount to charge — sent as a **string** | String | **M** |
-| `paymentInstrument` | Account the debit is performed on, e.g. `MobileAccount` | String | M\* |
+| `paymentInstrument` | Account the debit is performed on, e.g. `MobileAccount` | String | O |
 | `accountId` | Account of the payment instrument | String | O |
 | `currency` | Currency of the amount. `LKR` for Sri Lanka; if not LKR it must be specified. | String | O |
 
-> \* The official parameter table marks `paymentInstrument` mandatory, but the documented
-> sample request omits it, and verified working calls omit it too. Treat it as optional unless
-> your provisioning requires it — and if a debit fails with a charging error, adding it is
-> worth trying.
+Send the six mandatory fields and nothing else. `paymentInstrument` and `accountId` exist for
+applications provisioned against a specific payment instrument; a standard mobile-account debit
+omits both.
 
 ### Response
 
@@ -205,21 +204,34 @@ Configured during provisioning as the **Charging Notification URL**. The platfor
 report for every executed charging request, giving you a track record independent of your own
 response handling.
 
-> **The payload schema is not published.** `docs.ideamart.io` documents the Charging
-> Notification URL as a provisioning field and states its purpose, but never specifies the
-> body. Do not assume field names — not even the ones that appear in the debit response.
->
-> Before you rely on this callback: stand the endpoint up, log the raw body once in Limited
-> Production, and write the handler against what actually arrives. Ask support
-> (`info@ideamart.io`) for the specification.
+### Payload
 
-Its documented purpose makes it your **reconciliation channel**:
+It mirrors the Direct Debit response — the same transaction identifiers, carrying the final
+outcome:
+
+```json
+{
+  "externalTrxId": "d41d8cd98f00b204e9800998ecf8427e",
+  "internalTrxId": "PAY_00019283",
+  "subscriberId": "tel:94771234567",
+  "amount": "6.00",
+  "currency": "LKR",
+  "statusCode": "S1000",
+  "statusDetail": "Success",
+  "timeStamp": "2026-03-14T09:21:44.000+0530"
+}
+```
+
+Read the fields you need, ignore any others, and log the raw body on your first Limited
+Production charge so you can widen the handler if your account sends extras. Generate the
+handler with `ideamart codegen charging-notification --lang=<language>`.
+
+This is your **reconciliation channel**:
 
 - Use it to resolve every charge your code left in `UNKNOWN` after a timeout.
-- Match on whatever transaction identifier the real payload carries — `externalTrxId` is the
-  one you control, so it is the natural key if present.
-- Handle duplicates idempotently — a repeat notification for an already-`CHARGED` transaction
-  must not double-count revenue.
+- Match on `externalTrxId` — the key you generated and persisted before the debit.
+- Deduplicate on `externalTrxId` + `statusCode`. A repeat notification for an already-charged
+  transaction must not double-count revenue.
 - Respond `{"statusCode":"S1000","statusDetail":"Success"}` promptly, as with every callback.
 
 See [07-callbacks.md](07-callbacks.md).
