@@ -23,10 +23,11 @@ The platform is JSON over HTTPS, so **any language builds a complete integration
 in whatever the host project already uses. Every endpoint is written out as a runnable curl,
 with its parameters and its response defined, in
 [references/13-curl-reference.md](references/13-curl-reference.md): translate the request into
-the project's HTTP client and you have the call, whatever the language. Reference
-implementations and code emitters exist for TypeScript/Node, Python, Java, Go, PHP and C# as a
-convenience on top of that, and [references/11-any-stack.md](references/11-any-stack.md)
-specifies the surrounding integration language-neutrally.
+the project's HTTP client and you have the call, whatever the language. There is no code
+generator here on purpose — a curl is the same call in every language, where an emitter would
+serve six and age with their idioms. [references/11-any-stack.md](references/11-any-stack.md)
+specifies the surrounding integration language-neutrally, and reference implementations exist
+for TypeScript/Node, Python, Java, Go, PHP and C# as worked examples.
 
 ---
 
@@ -60,7 +61,6 @@ node tools/ideamart.mjs show <id>                    # full contract: params, re
 node tools/ideamart.mjs search "<query>"             # find by intent, e.g. "base size"
 node tools/ideamart.mjs curl <id> [key=value ...]    # runnable request + param/response defs
 node tools/ideamart.mjs validate <id> '<json>'       # check a payload against the spec
-node tools/ideamart.mjs codegen <what> --lang=<x>    # emit ready-to-paste code
 node tools/ideamart.mjs code <statusCode>            # decode a status code + the fix
 node tools/ideamart.mjs diagnose "<symptom>"         # cause and fix from a symptom
 node tools/ideamart.mjs practices [severity]         # security and reliability rules
@@ -75,33 +75,31 @@ data. The CLI is a documentation reader, not part of the integration, and constr
 about the stack you build in.
 
 **Use them in this order:** `search` or `list` to find the service → `show` for the exact
-contract → the curl reference or `codegen` for the call → `validate` the payload → `code` /
-`diagnose` when something fails.
+contract → the curl reference for the call → `validate` the payload → `code` / `diagnose` when
+something fails.
 
 ### Write the call from the contract, not from memory
 
-**Any language — [references/13-curl-reference.md](references/13-curl-reference.md).** Every
-endpoint at the wire: a runnable curl, every parameter defined with type and requiredness, the
-exact response, every response field explained, the status codes that endpoint returns, and the
-same treatment for all five inbound callbacks including a command that replays each one against
-your handler. Porting is mechanical — body, headers and branching are identical everywhere.
-Run the curl by hand when a call fails; it separates a bad payload from bad code in one step.
+**[references/13-curl-reference.md](references/13-curl-reference.md) is the source for every
+call, in every language.** Each endpoint is written out at the wire: a runnable curl, every
+parameter defined with type and requiredness, the exact response, every response field
+explained, the status codes that endpoint returns — and the same for all five inbound callbacks,
+including a command that replays each one against your handler.
 
-**The six emitter languages — `codegen`.** Working code from the same contract, so the payload,
-benign codes, timeout and `statusCode` branching cannot drift. Adapt it to the project's
-conventions.
+Translate the request into the host project's HTTP client and idiom, keeping the payload, the
+`statusCode` branching and the benign codes exactly as specified. Body, headers and branching
+are identical everywhere, so no language is second-class. `node tools/ideamart.mjs curl <id>
+key=value …` prints the same thing for one service with your values filled in and validated.
 
-```bash
-node tools/ideamart.mjs codegen <service-id>  --lang=<language>   # one wrapper
-node tools/ideamart.mjs codegen client        --lang=<language>   # every service + post() + config
-node tools/ideamart.mjs codegen errors        --lang=<language>   # all 86 status codes, classified
-node tools/ideamart.mjs codegen types         --lang=<language>   # request/response models
-node tools/ideamart.mjs codegen callbacks     --lang=<language>   # all five inbound handlers
-```
+Run the curl by hand when a call fails: it separates a bad payload from bad code in one step,
+and proves credentials, provisioning and the egress IP at once.
 
-Languages: `typescript`, `python`, `java`, `go`, `php`, `csharp`. `--out=<dir>` writes files.
-No emitter for your stack? Work from the curl reference — never introduce one of these six
-languages into a project that is not written in it.
+**There is no code generator in this skill, by design.** An emitter covers only the languages
+someone wrote emitters for and ages with those languages' idioms rather than with the Ideamart
+contract. Write the client in the project's own conventions from the contract above; the seven
+components it belongs in are in [references/11-any-stack.md](references/11-any-stack.md), and
+[templates/](templates/README.md) shows them already built in six languages as worked examples
+to read — never a reason to add one of those runtimes to a project.
 
 ## Read before writing code
 
@@ -122,8 +120,9 @@ languages into a project that is not written in it.
 | **Every endpoint as curl** — request, parameter definitions, response, response fields | [references/13-curl-reference.md](references/13-curl-reference.md) |
 
 Working reference implementations in [templates/](templates/README.md) for TypeScript/Node,
-Python, Java, Go, PHP and C#. Take the one matching the project's stack rather than inventing a
-different structure — and never introduce a new runtime to reach Ideamart.
+Python, Java, Go, PHP and C#. Read the one matching the project's stack for shape rather than
+inventing a different structure; for any other language, build the same seven components from
+the curl reference — and never introduce a new runtime to reach Ideamart.
 
 ---
 

@@ -45,7 +45,7 @@
   ],
   "scripts": {
     "ideamart": "node tools/ideamart.mjs",
-    "codegen": "node tools/ideamart.mjs codegen",
+    "curl": "node tools/ideamart.mjs curl",
     "test": "node --test tests/*.test.js",
     "sync": "node scripts/sync-rules.mjs && node scripts/build-curl-reference.mjs",
     "check": "node scripts/sync-rules.mjs --check && node scripts/build-curl-reference.mjs --check && npm test"

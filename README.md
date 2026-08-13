@@ -46,14 +46,17 @@ to one runtime:
 
 - [**Every endpoint as a runnable curl**](references/13-curl-reference.md) — the request, every
   parameter defined, the response, every response field explained, and the same for all five
-  callbacks. Translate it into any HTTP client and you have the call. No tooling required, and
-  no language is second-class.
-- **`codegen`** emits the client, the callback handlers, the models and the complete error-code
-  module in **six languages** from that same contract, with working templates for
-  TypeScript/Node, Python, Java, Go, PHP and C#.
+  callbacks. Translate it into the HTTP client you already use and you have the call. No SDK, no
+  generated code, no language second-class.
 - [**references/11-any-stack.md**](references/11-any-stack.md) specifies the integration around
   the calls language-neutrally — seven components, per-language notes, and an acceptance
   checklist — for Ruby, Rust, Kotlin, Elixir or anything else.
+- [**templates/**](templates/README.md) shows the whole thing already built in TypeScript/Node,
+  Python, Java, Go, PHP and C# — worked examples to read for shape, not output to paste.
+
+There is deliberately **no code generator**. An emitter serves the languages someone wrote
+emitters for and ages with each of their idioms; a curl is the same call everywhere and stays
+true as long as the contract does.
 
 ---
 
@@ -189,8 +192,7 @@ Return the number of subscribers currently registered to the application.
 | `list [category]` | What services exist? |
 | `show <id>` | What exactly does this call take and return? |
 | `search "<query>"` | Which service does the thing I want? |
-| `curl <id> [k=v]` | Give me a runnable request, with the parameters and the response defined. |
-| `codegen <what> --lang=<x>` | **Write the implementation for me.** |
+| `curl <id> [k=v]` | **Give me the call** — a runnable request, with the parameters and the response defined. |
 | `validate <id> '<json>'` | Is this payload correct? |
 | `code <statusCode>` | What does this error mean, and what do I do? |
 | `diagnose "<symptom>"` | Why is this not working? |
@@ -217,7 +219,7 @@ $ node tools/ideamart.mjs validate sms-send '{"message":"hi","destinationAddress
 
 ### Every endpoint as curl — the path for any language
 
-No SDK, no emitter, no Node: [references/13-curl-reference.md](references/13-curl-reference.md)
+No SDK, no code generation, no Node: [references/13-curl-reference.md](references/13-curl-reference.md)
 writes out all 11 endpoints and all 5 callbacks at the wire — the request, every parameter
 defined, the response, every response field explained, and the status codes that endpoint can
 return.
@@ -248,45 +250,21 @@ can commit one. The document is generated from the catalog and CI fails if it dr
 Ruby, Rust, Kotlin or Elixir integration works from exactly the same contract as a TypeScript
 one — and running a call by hand is the fastest way to tell a bad payload from bad code.
 
-### It writes the call, in your language
+### Why there is no code generator
 
-Where an emitter exists, `codegen` generates from the same catalog, so the payload, the timeout,
-the benign codes and the `statusCode` branching cannot drift from the contract:
+An earlier version of this repo shipped emitters for six languages. They were removed, on
+purpose. A generator encodes *idiom*, not contract: the Ideamart contract barely moves, but
+framework versions, HTTP-client conventions and language idioms move constantly, so the emitter
+carries most of the maintenance while the contract carries most of the value. It also draws an
+arbitrary line — the seventh language is a second-class citizen forever.
 
-```bash
-$ node tools/ideamart.mjs codegen caas-direct-debit --lang=python
+The curl reference has neither problem. It is generated from the catalog, verified in CI, and
+equally correct for Kotlin, Elixir and Rust as for TypeScript. Modern coding agents write better
+client code from a precise contract and a set of rules than any template can, because they write
+in the host project's actual conventions.
 
-def debit(*, external_trx_id, subscriber_id, amount, currency="LKR", ...):
-    """
-    CaaS Direct Debit — POST https://api.ideamart.io/caas/direct/debit
-
-    THIS MOVES REAL MONEY. Persist external_trx_id before calling.
-    E1379 (Transaction has already completed) means the desired state already holds.
-    """
-    if len(external_trx_id) > 32:
-        raise ValueError("[ideamart] external_trx_id must be 32 characters or fewer")
-    body = {
-        "externalTrxId": external_trx_id,
-        "subscriberId": to_tel_address(subscriber_id),
-        "amount": amount,
-        "currency": currency,
-    }
-    return _post("caas-direct-debit", _require_endpoint("caasDebit"), body, benign=["E1379"])
-```
-
-| Target | What you get |
-|---|---|
-| `<service-id>` | One wrapper — the payload, the guards, the benign codes |
-| `<callback-id>` | One inbound handler — validate, dedupe, acknowledge, hand off |
-| `client` | Every service, the `post()` helper, `tel:` normalisation, endpoint resolution |
-| `errors` | All 86 status codes, four handling classes, benign-code helpers |
-| `types` | Request and response models for every service and callback |
-| `config` | The environment contract, one variable per provisioned service |
-| `callbacks` | All five inbound handlers |
-
-Languages: **typescript · python · java · go · php · csharp**. `--out=<dir>` writes the files.
-Anything else works from the curl reference above — the shape is identical, and porting a curl
-is mechanical.
+What is kept current instead: the catalog, the curl reference, the status-code semantics, the
+practices, and the diagnostics.
 
 And it turns a symptom into a fix:
 
@@ -432,7 +410,6 @@ A-to-Z route for each is [references/12-implementation-playbook.md](references/1
 SKILL.md · AGENTS.md              Entry points (Claude Code / everyone else)
 catalog/ideamart-api.json         The whole contract as structured data
 tools/ideamart.mjs                Offline CLI over the catalog
-tools/codegen.mjs                 Code generation for six languages
 references/                       13 guides: per-service, callbacks, codes, security, go-live,
                                   the language-neutral spec, the A-to-Z playbook, and every
                                   endpoint as curl with its definitions

@@ -15,22 +15,19 @@ as JSON-over-HTTPS APIs.
 node tools/ideamart.mjs list                          # what exists
 node tools/ideamart.mjs show <id>                     # exact contract
 node tools/ideamart.mjs curl <id> [key=value ...]     # runnable request + param/response defs
-node tools/ideamart.mjs codegen <id> --lang=<lang>    # write the call for me (six languages)
 node tools/ideamart.mjs validate <id> '<json>'
 node tools/ideamart.mjs code <statusCode>
 ```
 
-`references/13-curl-reference.md` is the whole contract at the wire — every endpoint as a
+**`references/13-curl-reference.md` is where every call comes from** — every endpoint as a
 runnable curl, every parameter defined, the response and every response field, the status codes
 that endpoint returns, and all five callbacks with a command that replays each against your
-handler. **That page is the path for any language**, and the first thing to run by hand when a
-call fails.
+handler. Translate the request into the host project's HTTP client and idiom; that is the call,
+in any language. It is also the first thing to run by hand when a call fails.
 
-`codegen` targets: any service or callback id, or `client` / `errors` / `types` / `config` /
-`callbacks`. Languages: typescript, python, java, go, php, csharp. Generated code carries the
-credential injection, the timeout, the `tel:` normaliser, the benign codes and the `statusCode`
-branching, so it cannot drift from the contract. No emitter for the project's language? Work
-from the curl reference — never add one of these six runtimes to a project written in another.
+There is no code generator in this skill by design: an emitter would cover a handful of
+languages and age with their idioms, while the contract and the curl above stay true for all of
+them. Write the code in the project's own conventions.
 
 Full command list: `node tools/ideamart.mjs help`. Add `--json` for machine-readable output.
 If you cannot run commands, or Node is not installed, read `catalog/ideamart-api.json` — same

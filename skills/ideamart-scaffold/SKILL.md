@@ -42,25 +42,22 @@ config file from your language's directory. Requirements:
 
 Every Ideamart call is the same HTTPS POST, so the client is one `post()` that injects
 credentials, sets a timeout and raises a typed error on non-`S1000`, plus a thin wrapper per
-service. Two ways to get there, both from the same contract:
+service.
 
-**In one of the six emitter languages** — TypeScript, Python, Java, Go, PHP, C#:
+Write it from `references/13-curl-reference.md`. Each endpoint is there as a runnable curl with
+every parameter defined and every response field explained: translate the request into the
+project's own HTTP client, one wrapper per service, and put the seven components from
+`references/11-any-stack.md` around them. Run the curl first — a payload proven by hand is one
+you cannot get wrong in code.
 
-```bash
-node tools/ideamart.mjs codegen client --lang=<language> --out=<your integration dir>
-node tools/ideamart.mjs codegen errors --lang=<language> --out=<same dir>
-```
+The error module is `references/08-status-codes.md`: all 86 codes with their handling class, the
+four classes, and the three benign codes (`E1351` register, `E1356` unregister, `E1379` debit).
+Build the sets from the Class column, or straight from `catalog/ideamart-api.json`.
 
-That is every service wrapper plus all 86 status codes with their handling classes. Adapt it to
-the project's conventions — swap in the project's HTTP client, logger and config loader — but
-keep the `statusCode` branching and the benign codes exactly as generated. One call at a time:
-`node tools/ideamart.mjs codegen <service-id> --lang=<language>`.
-
-**In any other language** — write the wrappers from `references/13-curl-reference.md`. Each
-endpoint is there as a runnable curl with every parameter defined and every response field
-explained; translate the request into the project's HTTP client, one wrapper per service, and
-add the seven components from `references/11-any-stack.md` around them. Run the curl first to
-confirm the payload works before writing a line of it.
+If the project is in TypeScript/Node, Python, Java, Go, PHP or C#, read the matching
+`templates/` implementation for shape and port its structure — but write in this project's
+conventions, with its HTTP client, logger and config loader. Keep the `statusCode` branching and
+the benign codes exactly as specified.
 
 Never recall parameter names; `show <id>` and the curl reference have the exact contract.
 

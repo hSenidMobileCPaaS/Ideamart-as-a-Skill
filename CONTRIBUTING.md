@@ -34,8 +34,8 @@ request/response pair with credentials and MSISDNs redacted.
 
 ## For hSenid Mobile maintainers
 
-The catalog is the source of truth. `catalog/ideamart-api.json` drives the CLI, the code
-generator, the tests and much of the documentation. When a contract changes:
+The catalog is the source of truth. `catalog/ideamart-api.json` drives the CLI, the curl
+reference, the tests and much of the documentation. When a contract changes:
 
 1. Edit `catalog/ideamart-api.json`.
 2. Run `node scripts/build-curl-reference.mjs` to regenerate
@@ -43,18 +43,20 @@ generator, the tests and much of the documentation. When a contract changes:
 3. Update the matching `references/*.md` so prose and data agree.
 4. Run `npm test` — the suite checks that every referenced status code exists, every parameter
    is fully specified, every documented sample validates against its own schema, every callback
-   has fields and a sample payload, every referenced file is present, every endpoint and
-   parameter appears in the curl reference, and every service still generates working code in
-   all six languages.
+   has fields and a sample payload, every referenced file is present, and every endpoint,
+   parameter and response field appears in the curl reference.
 
-A contract fix reaches both derived forms for free: `tools/codegen.mjs` and
-`scripts/build-curl-reference.mjs` read the catalog, so `ideamart codegen` output and the curl
-reference follow the same day. Never hand-edit generated output — fix the catalog, the emitter
-or the builder.
+`references/13-curl-reference.md` is generated from the catalog and carries a banner saying so;
+`scripts/build-curl-reference.mjs --check` fails the build if it drifts. Never hand-edit it —
+fix the catalog or the builder.
 
-`references/13-curl-reference.md` is generated and carries a banner saying so. It is the
-tool-free path into the platform, so it matters most to the users who have the least: someone
-integrating in Rust or Elixir has no emitter and no template, only that page.
+**This repo ships no code generator, and should not grow one.** It had emitters for six
+languages once; they were removed because an emitter encodes language idiom rather than the
+Ideamart contract, so it ages with six ecosystems while the contract barely moves — and it makes
+every seventh language second-class. The curl reference is the delivery mechanism for an
+implementation now, in every language equally. If a request for "a Kotlin client" arrives, the
+answer is a correct contract plus the seven components in `references/11-any-stack.md`, not a
+seventh emitter.
 
 Where the official documentation and a verified working call disagree, the catalog records the
 call that works, with no caveat in the text. The skill gives one answer; a hedge in a parameter

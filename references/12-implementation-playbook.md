@@ -5,17 +5,15 @@ language and **any** starting point. Work top to bottom on a new project; jump t
 [§2](#2-entry-point-b--mid-build) or [§3](#3-entry-point-c--retrofit-into-a-live-application)
 if code already exists.
 
-Every step below that says *generate* means:
+Every step below that says *write the call* means: take the endpoint from
+[13-curl-reference.md](13-curl-reference.md) — a runnable curl with every parameter defined and
+every response field explained — and translate the request into the project's own HTTP client.
+That is the same instruction whatever the language is; nothing in this playbook assumes one.
 
 ```bash
-node tools/ideamart.mjs codegen <what> --lang=<language> [--out=<dir>]
+node tools/ideamart.mjs curl <id> [key=value ...]   # one endpoint, your values, validated
+node tools/ideamart.mjs reference 13-curl-reference # all of them
 ```
-
-That covers TypeScript, Python, Java, Go, PHP and C#. **In any other language, write the same
-thing by hand from [13-curl-reference.md](13-curl-reference.md)** — every endpoint is there as a
-runnable curl with its parameters and its response defined, so each *generate* step becomes
-"translate these requests into the project's HTTP client". Nothing else in this playbook
-changes: the order, the flows, the callbacks and the go-live gate are identical.
 
 ---
 
@@ -48,19 +46,21 @@ You are building the application around Ideamart.
 
 ```bash
 cp templates/.env.example .env          # then fill in APP_ID + password
-node tools/ideamart.mjs codegen config --lang=<language>
 ```
 
-**3. Generate the client and the error module.**
+One module reads those variables, validates at startup and fails loudly — see
+[11-any-stack §1](11-any-stack.md#1-config). Nothing else in the codebase touches the
+environment.
 
-```bash
-node tools/ideamart.mjs codegen client --lang=<language>
-node tools/ideamart.mjs codegen errors --lang=<language>
-node tools/ideamart.mjs codegen types  --lang=<language>   # where the language has types
-```
+**3. Write the client and the error module.**
 
-You now have every service wrapper, the credential injection, the timeout, the `tel:`
-normaliser, the benign-code handling and all 86 status codes with their handling classes.
+The client is one `post()` — credential injection, a 15-second timeout, `statusCode` branching —
+plus a thin wrapper per service, each built from its entry in
+[13-curl-reference.md](13-curl-reference.md). The error module is the four handling classes and
+the benign codes from [08-status-codes](08-status-codes.md), whose complete table carries a
+class per code. Both are specified language-neutrally in [11-any-stack](11-any-stack.md), and
+[templates/](../templates/README.md) shows them already built in six languages if one matches
+your stack.
 
 **4. Prove the credentials before building features.** Query Base needs no subscriber and
 charges nothing:
@@ -92,11 +92,11 @@ An application exists; Ideamart is a feature you are adding now.
 2. **Audit what exists first** if any Ideamart code is already there:
    `node tools/ideamart.mjs practices` and the `ideamart-review` skill. Half-built integrations
    usually have a hardcoded credential and an `if (res.ok)`.
-3. **Generate into your own module** rather than pasting endpoint URLs into existing services:
-   `codegen client --lang=<language> --out=<your integration dir>`.
+3. **Build into your own module** rather than pasting endpoint URLs into existing services —
+   one client, one `post()`, one wrapper per service.
 4. **Reuse what the project already has** — its HTTP client, its logger, its queue, its
-   secret manager. Replace the generated `post()` internals with the project's client if it has
-   one; keep the `statusCode` branching exactly as generated.
+   secret manager. Only the `statusCode` branching and the benign codes are non-negotiable;
+   everything around them follows the project's conventions.
 5. Continue at [§4](#4-flow-recipes).
 
 ---
@@ -127,8 +127,8 @@ Users already depend on this application. The integration must land without dist
 
 ## 4. Flow recipes
 
-The four flows that cover almost every Ideamart application. Each is a sequence of generated
-calls plus the state you must keep.
+The four flows that cover almost every Ideamart application. Each is a sequence of calls plus
+the state you must keep.
 
 ### A. Keyword opt-in over SMS
 
@@ -198,15 +198,10 @@ debit regardless of what it said.
 
 ## 5. Callbacks: half the integration
 
-Five inbound routes, one contract. Generate them:
-
-```bash
-node tools/ideamart.mjs codegen callbacks --lang=<language>
-```
-
-In any other language, write them from [13-curl-reference.md](13-curl-reference.md), which gives
-each payload field by field, the response you must return, the dedupe key, and a curl that
-replays the exact payload against your route.
+Five inbound routes, one contract. Write them from
+[13-curl-reference.md](13-curl-reference.md), which gives each payload field by field, the
+response you must return, the dedupe key, and a curl that replays the exact payload against your
+route.
 
 | Callback | Fires when | Without it |
 |---|---|---|
@@ -227,14 +222,10 @@ editing the provisioning record.
 
 ## 6. Error handling that survives production
 
-```bash
-node tools/ideamart.mjs codegen errors --lang=<language>
-```
-
-That module gives you every published code, its handling class, the benign codes per operation,
-and `classify()` / `describe()` / `isBenign()`. Outside the six emitter languages, build the
-same tables from [08-status-codes](08-status-codes.md) — or straight out of
-`catalog/ideamart-api.json`, which is where the emitter reads them from. Wire it in like this:
+Build one error module: every published code, its handling class, and the benign codes per
+operation. The complete table in [08-status-codes](08-status-codes.md) carries a class per code,
+and the same data is in `catalog/ideamart-api.json` if you would rather generate the sets than
+retype them. Wire it in like this:
 
 | Class | Your behaviour |
 |---|---|
@@ -292,11 +283,10 @@ subscribers who can be charged real money?**
 |---|---|
 | See what exists | `ideamart list` |
 | Get one contract exactly | `ideamart show <service>` |
-| Write the call, any language | [13-curl-reference.md](13-curl-reference.md), or `ideamart curl <service> key=value …` |
-| Write the call, six languages | `ideamart codegen <service> --lang=<language>` |
-| Write the whole client | `ideamart codegen client --lang=<language>` |
-| Wire up error codes | `ideamart codegen errors --lang=<language>` |
-| Write the webhooks | `ideamart codegen callbacks --lang=<language>` |
+| Write a call, in any language | [13-curl-reference.md](13-curl-reference.md), or `ideamart curl <service> key=value …` |
+| Write the whole client | [11-any-stack](11-any-stack.md), the seven components |
+| Wire up error codes | [08-status-codes](08-status-codes.md), the Class column |
+| Write the webhooks | [13-curl-reference.md](13-curl-reference.md), the callbacks half |
 | Check a payload | `ideamart validate <service> '<json>'` |
 | Decode a failure | `ideamart code <statusCode>` |
 | Diagnose a symptom | `ideamart diagnose "<symptom>"` |

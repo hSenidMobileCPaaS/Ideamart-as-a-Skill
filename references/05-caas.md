@@ -223,9 +223,9 @@ outcome:
 ```
 
 Read the fields you need, ignore any others, and log the raw body on your first Limited
-Production charge so you can widen the handler if your account sends extras. Generate the
-handler with `ideamart codegen charging-notification --lang=<language>`, or write it from the
-field-by-field payload and replay command in [13-curl-reference.md](13-curl-reference.md).
+Production charge so you can widen the handler if your account sends extras. Write the handler
+from the field-by-field payload and replay command in
+[13-curl-reference.md](13-curl-reference.md).
 
 This is your **reconciliation channel**:
 
@@ -252,7 +252,7 @@ See [07-callbacks.md](07-callbacks.md).
 
 ---
 
-## Money-handling checklist for generated code
+## Money-handling checklist for the charging path
 
 - [ ] Amounts use a decimal type, never a binary float
 - [ ] `externalTrxId` persisted before the API call

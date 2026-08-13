@@ -15,8 +15,8 @@ Every tier gets the full `references/`, `templates/`, `catalog/` and `tools/` â€
 anywhere the agent can run a shell command, which is the practical floor for all of them. Tiers
 say nothing about the language you build in: `references/13-curl-reference.md` gives every
 endpoint as a runnable curl with its parameters and response defined, which is enough on its
-own in any language; `templates/` and the code emitters cover TypeScript/Node, Python, Java, Go,
-PHP and C#; and `references/11-any-stack.md` specifies what surrounds the calls.
+own in any language; `references/11-any-stack.md` specifies what surrounds the calls; and
+`templates/` shows both already built in TypeScript/Node, Python, Java, Go, PHP and C#.
 
 ## Matrix
 

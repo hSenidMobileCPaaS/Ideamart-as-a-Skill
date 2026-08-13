@@ -22,7 +22,6 @@ command for machine-readable output.
 | `show <id>` | What exactly does this call take and return? |
 | `search "<query>"` | Which service does the thing I want? |
 | `curl <id> [k=v]` | Give me a runnable request, with the parameters and response defined. |
-| `codegen <what> --lang=<x>` | Write the code for me (six languages). |
 | `validate <id> '<json>'` | Is this payload correct? |
 | `code <statusCode>` | What does this error mean and what do I do? |
 | `diagnose "<symptom>"` | Why is this not working? |
@@ -59,27 +58,26 @@ command for machine-readable output.
 
 ## Writing the call
 
-**Any language — `references/13-curl-reference.md`.** Every endpoint at the wire: a runnable
-curl, every parameter defined, the response, every response field explained, that endpoint's
-status codes, and all five callbacks with a replay command. Translating a curl into a language's
-HTTP client is mechanical; this is why no stack is second-class here.
-
-**Six languages — `codegen`.** The same contract, emitted as code.
+**`references/13-curl-reference.md`** is where every call comes from: each endpoint at the wire
+— a runnable curl, every parameter defined, the response, every response field explained, that
+endpoint's status codes — and all five callbacks with a replay command. Translate the request
+into the project's own HTTP client; that is the integration.
 
 ```bash
-node tools/ideamart.mjs codegen client --lang=python     # every service + post() + config
-node tools/ideamart.mjs codegen errors --lang=java       # all 86 status codes, classified
-node tools/ideamart.mjs codegen ussd-send --lang=go      # one call
+node tools/ideamart.mjs curl subscription-query-base            # the cheapest call to prove setup
+node tools/ideamart.mjs curl sms-send message="Hi" \
+  destinationAddresses='["tel:94771234567"]'                    # filled in and validated
+node tools/ideamart.mjs reference 13-curl-reference             # the whole page
 ```
 
-Targets: any service or callback id, or `client` / `errors` / `types` / `config` / `callbacks`.
-Languages: typescript, python, java, go, php, csharp. `--out=<dir>` writes files.
+There is no code generator: an emitter would cover a few languages and age with their idioms,
+where a curl is the same call in all of them and stays true.
 
 ## Languages
 
 The integration can be written in **any** language — Ideamart is JSON over HTTPS. The curl
-reference covers every endpoint with no tooling at all; working templates ship for
-TypeScript/Node, Python, Java, Go, PHP and C# (`templates/README.md`); and
+reference covers every endpoint with no tooling at all; worked implementations ship for
+TypeScript/Node, Python, Java, Go, PHP and C# (`templates/README.md`) to read for shape; and
 `references/11-any-stack.md` specifies the same seven components language-neutrally for
 anything else. The CLI above needs Node, but it is only a documentation reader.
 

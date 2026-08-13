@@ -308,6 +308,48 @@ test("all thirteen reference documents exist", () => {
 });
 
 /**
+ * Error handling is built from the complete table in 08-status-codes.md, so every
+ * code there must carry the same handling class the catalog and `ideamart code`
+ * report. A class that disagrees sends someone's retry logic the wrong way.
+ */
+test("the status-code reference classifies every code exactly as the catalog does", () => {
+  const doc = readFileSync(join(repoRoot, "references", "08-status-codes.md"), "utf8");
+  const table = doc.slice(doc.indexOf("## Complete official error code list"));
+  const rows = [...table.matchAll(/^\| `(E1\d{3})` \| (\S+) \| /gm)];
+
+  const documented = new Map(rows.map(([, code, cls]) => [code, cls]));
+  const expected = Object.entries(catalog.statusCodes).filter(([code]) => code !== "S1000");
+
+  assert.equal(documented.size, expected.length, "the complete list is missing codes");
+  for (const [code, meta] of expected) {
+    assert.equal(documented.get(code), meta.class, `08-status-codes.md misclassifies ${code}`);
+  }
+});
+
+/**
+ * The skill used to ship code emitters for six languages. They were removed
+ * because an emitter encodes language idiom rather than the Ideamart contract:
+ * it ages with six ecosystems, and it makes every seventh language
+ * second-class. The curl reference replaced them. This keeps the docs from
+ * advertising a command that no longer exists — and the emitters from
+ * reappearing without the decision being revisited.
+ */
+test("no entry point advertises a code generator", () => {
+  const surfaces = [
+    "SKILL.md",
+    "AGENTS.md",
+    "README.md",
+    ...readdirSync(join(repoRoot, "skills")).map((d) => `skills/${d}/SKILL.md`),
+    ...readdirSync(join(repoRoot, "references")).map((f) => `references/${f}`),
+  ];
+  const offenders = surfaces.filter((file) =>
+    /ideamart(\.mjs)?\s+codegen|npm run codegen|--lang=/.test(readFileSync(join(repoRoot, file), "utf8"))
+  );
+  assert.deepEqual(offenders, [], `these still document a removed codegen command: ${offenders}`);
+  assert.equal(existsSync(join(repoRoot, "tools", "codegen.mjs")), false);
+});
+
+/**
  * The curl reference is the tool-free path into the platform: an agent working
  * in Ruby, Rust or Kotlin gets no emitter, so this page is the whole contract it
  * has. It is generated from the catalog, and CI fails if it drifts.

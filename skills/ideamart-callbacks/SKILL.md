@@ -13,13 +13,11 @@ node tools/ideamart.mjs list --direction=inbound            # all five
 node tools/ideamart.mjs show ussd-receive                   # payload + rules
 node tools/ideamart.mjs curl sms-mo                         # fields, plus a command that
                                                             # replays it against your handler
-node tools/ideamart.mjs codegen callbacks --lang=<language> # all five handlers, written
-node tools/ideamart.mjs codegen ussd-receive --lang=<lang>  # just one
 ```
 
 All five are written out in `references/13-curl-reference.md`: what arrives, every field
 defined, what you must respond, the dedupe key, and a curl that replays the exact payload
-against your own route. Use that in any language the emitters do not cover.
+against your own route. Write the handlers from that, in the project's own framework.
 
 ## The contract — identical for all five
 

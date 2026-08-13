@@ -5,9 +5,10 @@
  *   node scripts/build-curl-reference.mjs           write the document
  *   node scripts/build-curl-reference.mjs --check   fail if it is stale (used in CI)
  *
- * The curl reference is the tool-free path into Ideamart: every endpoint, every
- * parameter definition, a runnable request and the response it returns, so a
- * stack with no template and no emitter can still be integrated correctly.
+ * The curl reference is *the* way this skill hands over an implementation:
+ * every endpoint, every parameter definition, a runnable request and the
+ * response it returns. There is no code generator — a curl and the host
+ * project's HTTP client cover every language equally.
  *
  * It is generated rather than hand-written for the same reason the agent rule
  * copies are: a parameter that drifts from the catalog becomes a wrong parameter
@@ -138,11 +139,13 @@ The whole Ideamart contract at the wire: each endpoint, each parameter defined, 
 can run, and the response it returns. No SDK, no generated code, no tooling of any kind between
 you and the platform.
 
-**This is the path for any language.** A stack with no template and no emitter needs nothing
-more than this page: the body, the headers and the branching are identical whether the call
-goes out through \`requests\` in Python, \`HttpClient\` in Java or .NET, \`net/http\` in Go, Guzzle in
-PHP, \`Net::HTTP\` in Ruby, \`reqwest\` in Rust, \`HTTPoison\` in Elixir or \`fetch\` in Node. Translate
-the curl, keep everything else.
+**Write the integration from this page, in whatever language the project already uses.** There
+is deliberately no code generator in this skill: a generator would privilege a handful of
+languages and rot as their idioms move, while the request below is the same call in all of
+them. The body, the headers and the branching are identical whether it goes out through
+\`requests\` in Python, \`HttpClient\` in Java or .NET, \`net/http\` in Go, Guzzle in PHP,
+\`Net::HTTP\` in Ruby, \`reqwest\` in Rust, \`HTTPoison\` in Elixir or \`fetch\` in Node. Translate the
+curl into the project's own HTTP client and idiom; keep everything else exactly as specified.
 
 Run these against a real application to confirm provisioning and credentials before writing a
 line of code — a working curl removes half the possible causes when the integration then fails.
@@ -342,8 +345,8 @@ which is visible in a shell command:
 
 Those seven, plus a shared USSD session store, are the whole specification. They are written out
 language-neutrally in [11-any-stack.md](11-any-stack.md), with an acceptance checklist for a
-port, and as working code in [templates/](../templates/README.md) for TypeScript/Node, Python,
-Java, Go, PHP and C#.
+port. [templates/](../templates/README.md) shows the same seven already built in TypeScript/Node,
+Python, Java, Go, PHP and C# — worked examples to read for shape, not output to paste.
 
 ## Related
 
@@ -351,7 +354,6 @@ Java, Go, PHP and C#.
 |---|---|
 | Machine-readable form of this page | [\`catalog/ideamart-api.json\`](../catalog/ideamart-api.json) |
 | Build a request with your own values | \`node tools/ideamart.mjs curl <id> key=value …\` |
-| The same call as code, where an emitter exists | \`node tools/ideamart.mjs codegen <id> --lang=<language>\` |
 | Check a payload before sending it | \`node tools/ideamart.mjs validate <id> '<json>'\` |
 | Decode a status code you received | \`node tools/ideamart.mjs code <statusCode>\` |
 | Smoke-test the outbound path | [\`scripts/smoke-test.sh\`](../scripts/smoke-test.sh) (or \`smoke-test.ps1\`) |
