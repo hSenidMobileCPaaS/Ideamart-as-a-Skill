@@ -21,8 +21,8 @@ command for machine-readable output.
 | `list [category]` | What services exist? |
 | `show <id>` | What exactly does this call take and return? |
 | `search "<query>"` | Which service does the thing I want? |
-| `curl <id> [k=v]` | Give me a valid, runnable request. |
-| `codegen <what> --lang=<x>` | Write the code for me. |
+| `curl <id> [k=v]` | Give me a runnable request, with the parameters and response defined. |
+| `codegen <what> --lang=<x>` | Write the code for me (six languages). |
 | `validate <id> '<json>'` | Is this payload correct? |
 | `code <statusCode>` | What does this error mean and what do I do? |
 | `diagnose "<symptom>"` | Why is this not working? |
@@ -55,9 +55,16 @@ command for machine-readable output.
 
 `01-getting-started` · `02-sms` · `03-ussd` · `04-subscription` · `05-caas` · `06-lbs-ivr` ·
 `07-callbacks` · `08-status-codes` · `09-security-best-practices` · `10-production-checklist` ·
-`11-any-stack` · `12-implementation-playbook`
+`11-any-stack` · `12-implementation-playbook` · `13-curl-reference`
 
-## Code generation
+## Writing the call
+
+**Any language — `references/13-curl-reference.md`.** Every endpoint at the wire: a runnable
+curl, every parameter defined, the response, every response field explained, that endpoint's
+status codes, and all five callbacks with a replay command. Translating a curl into a language's
+HTTP client is mechanical; this is why no stack is second-class here.
+
+**Six languages — `codegen`.** The same contract, emitted as code.
 
 ```bash
 node tools/ideamart.mjs codegen client --lang=python     # every service + post() + config
@@ -70,8 +77,9 @@ Languages: typescript, python, java, go, php, csharp. `--out=<dir>` writes files
 
 ## Languages
 
-The integration can be written in **any** language — Ideamart is JSON over HTTPS. Working
-templates ship for TypeScript/Node, Python, Java, Go, PHP and C# (`templates/README.md`), and
+The integration can be written in **any** language — Ideamart is JSON over HTTPS. The curl
+reference covers every endpoint with no tooling at all; working templates ship for
+TypeScript/Node, Python, Java, Go, PHP and C# (`templates/README.md`); and
 `references/11-any-stack.md` specifies the same seven components language-neutrally for
 anything else. The CLI above needs Node, but it is only a documentation reader.
 

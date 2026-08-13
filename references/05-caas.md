@@ -224,7 +224,8 @@ outcome:
 
 Read the fields you need, ignore any others, and log the raw body on your first Limited
 Production charge so you can widen the handler if your account sends extras. Generate the
-handler with `ideamart codegen charging-notification --lang=<language>`.
+handler with `ideamart codegen charging-notification --lang=<language>`, or write it from the
+field-by-field payload and replay command in [13-curl-reference.md](13-curl-reference.md).
 
 This is your **reconciliation channel**:
 

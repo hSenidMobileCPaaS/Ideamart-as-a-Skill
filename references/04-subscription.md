@@ -352,3 +352,8 @@ Errors:
   identity for all later Ideamart calls. Do not store the raw MSISDN the user typed unless you
   genuinely need it, and if you do, protect it as PII.
 - Never log the OTP.
+
+---
+
+Register, unregister, status, query base, OTP request and OTP verify as runnable curls — every
+parameter, response and response field defined: [13-curl-reference.md](13-curl-reference.md).

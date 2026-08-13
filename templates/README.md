@@ -23,6 +23,11 @@ language-neutral specification — including an acceptance checklist for stacks 
 here (Ruby, Rust, Kotlin, Elixir, …) — is
 [references/11-any-stack.md](../references/11-any-stack.md).
 
+**No template for your stack?** Nothing is missing. Take the calls from
+[references/13-curl-reference.md](../references/13-curl-reference.md) — every endpoint as a
+runnable curl, with every parameter and response field defined — and build the seven components
+around them. Every template on this page is that same contract, already ported.
+
 ## What every template does the same way
 
 - **One config module** reads the environment, validates at startup, and refuses to resolve an

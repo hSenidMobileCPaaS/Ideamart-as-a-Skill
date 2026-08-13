@@ -14,7 +14,7 @@
  *   code <statusCode>                                Decode a status code
  *   diagnose <symptom|code>                          Most likely cause + fix
  *   search <query>                                   Search everything
- *   curl <id> [key=value ...]                        Build a runnable request
+ *   curl <id> [key=value ...]                        Runnable request + definitions
  *   validate <id> <json|@file|->                     Check a payload
  *   practices [severity]                             Security/reliability rules
  *   checklist                                        Go-live checklist
@@ -266,15 +266,25 @@ function cmdCurl() {
     const data = {
       note: `${entry.name} is inbound — Ideamart calls you, you do not call it.`,
       yourRoute: `POST ${entry.suggestedPath}`,
+      fields: entry.fields,
       incomingPayload: entry.samplePayload,
       yourResponse: catalog.conventions.callbackAck,
+      dedupeKey: entry.dedupeKey,
       testCommand: `curl -X POST 'http://localhost:3000${entry.suggestedPath}' \\\n  --header 'Content-Type: application/json' \\\n  --data '${JSON.stringify(entry.samplePayload)}'`,
+      reference: "references/13-curl-reference.md",
     };
     return out(data, (d) => {
       console.log(`\n  ${yellow(d.note)}\n`);
-      console.log(`  ${bold("Test your handler with:")}\n`);
+      console.log(`  ${bold("Payload fields")}`);
+      for (const f of d.fields) {
+        const req = f.required ? red("always sent") : dim("optional");
+        console.log(`    ${cyan(f.name.padEnd(22))} ${f.type.padEnd(8)} ${req}`);
+        console.log(`      ${dim(f.description)}`);
+      }
+      console.log(`\n  ${bold("Test your handler with:")}\n`);
       console.log(indent(d.testCommand, 4));
-      console.log(`\n  ${bold("It must respond:")} ${JSON.stringify(d.yourResponse)}\n`);
+      console.log(`\n  ${bold("It must respond:")} ${JSON.stringify(d.yourResponse)}`);
+      console.log(`  ${bold("Deduplicate on:")} ${d.dedupeKey}\n`);
     });
   }
 
@@ -295,14 +305,56 @@ function cmdCurl() {
   const validation = validatePayload(entry, payload);
   const curl = toCurl(entry, payload);
 
-  out({ service: entry.id, url: urlFor(entry), payload, curl, validation, rules: entry.rules }, (d) => {
-    console.log(`\n${d.curl}\n`);
+  const data = {
+    service: entry.id,
+    name: entry.name,
+    endpoint: `POST ${urlFor(entry)}`,
+    envVar: entry.envVar,
+    url: urlFor(entry),
+    parameters: entry.parameters,
+    payload,
+    curl,
+    sampleResponse: entry.sampleResponse,
+    responseFields: entry.responseFields,
+    validation,
+    rules: entry.rules,
+    reference: "references/13-curl-reference.md",
+  };
+
+  out(data, (d) => {
+    console.log(`\n  ${bold(d.name)}  ${dim(d.endpoint)}`);
+    console.log(`  ${dim(`endpoint variable ${d.envVar}`)}\n`);
+
+    console.log(`  ${bold("Parameters")}`);
+    for (const p of d.parameters) {
+      const req = p.required ? red("required") : dim("optional");
+      const en = p.enum ? dim(`  [${p.enum.join(" | ")}]`) : "";
+      console.log(`    ${cyan(p.name.padEnd(22))} ${p.type.padEnd(8)} ${req}${en}`);
+      console.log(`      ${dim(p.description)}`);
+    }
+
+    console.log(`\n  ${bold("Request")}\n`);
+    console.log(indent(d.curl, 2));
+
+    if (d.sampleResponse) {
+      console.log(`\n  ${bold("Response")}  ${dim("HTTP 200 — success is statusCode S1000, nothing else")}\n`);
+      console.log(indent(JSON.stringify(d.sampleResponse, null, 2), 4));
+    }
+    if (d.responseFields?.length) {
+      console.log(`\n  ${bold("Response fields")}`);
+      for (const f of d.responseFields) {
+        console.log(`    ${cyan(f.name.padEnd(22))} ${dim(f.description)}`);
+      }
+    }
+
+    console.log();
     if (!d.validation.valid) {
       console.log(`  ${red(bold("Invalid:"))}`);
       d.validation.errors.forEach((e) => console.log(`    ${red("✗")} ${e}`));
     }
     d.validation.warnings.forEach((w) => console.log(`  ${yellow("!")} ${w}`));
-    console.log(`\n  ${dim("Credentials are env placeholders — export them, do not paste them in.")}\n`);
+    console.log(`\n  ${dim("Credentials are env placeholders — export them, do not paste them in.")}`);
+    console.log(`  ${dim(`Every endpoint in this form: ${d.reference}`)}\n`);
   });
 }
 
@@ -379,7 +431,7 @@ function cmdReference() {
       "01-getting-started", "02-sms", "03-ussd", "04-subscription", "05-caas",
       "06-lbs-ivr", "07-callbacks", "08-status-codes",
       "09-security-best-practices", "10-production-checklist", "11-any-stack",
-      "12-implementation-playbook",
+      "12-implementation-playbook", "13-curl-reference",
     ];
     return out({ documents: docs }, (d) => {
       console.log(`\n  ${bold("Reference documents")}\n`);
@@ -474,13 +526,18 @@ function cmdHelp() {
     platform                                         Base URLs, operators, conventions
 
   ${bold("BUILD")}
-    curl <id> [key=value ...]                        Build a runnable request
+    curl <id> [key=value ...]                        Runnable request + parameter and
+                                                     response definitions — works for any
+                                                     language, no emitter needed
     validate <id> <json|@file|->                     Check a payload against the spec
     codegen <what> --lang=<language> [--out=<dir>]   Emit ready-to-paste code
 
       what      client | errors | types | config | callbacks
                 or one service/callback id (e.g. caas-direct-debit, ussd-receive)
       language  typescript | python | java | go | php | csharp
+
+    No emitter for your stack? Every endpoint is written out as curl, with parameter and
+    response definitions, in references/13-curl-reference.md.
 
   ${bold("DEBUG")}
     code <statusCode>                                Decode a status code

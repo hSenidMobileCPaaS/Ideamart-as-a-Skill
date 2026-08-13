@@ -38,15 +38,23 @@ The catalog is the source of truth. `catalog/ideamart-api.json` drives the CLI, 
 generator, the tests and much of the documentation. When a contract changes:
 
 1. Edit `catalog/ideamart-api.json`.
-2. Update the matching `references/*.md` so prose and data agree.
-3. Run `npm test` — the suite checks that every referenced status code exists, every parameter
+2. Run `node scripts/build-curl-reference.mjs` to regenerate
+   `references/13-curl-reference.md`.
+3. Update the matching `references/*.md` so prose and data agree.
+4. Run `npm test` — the suite checks that every referenced status code exists, every parameter
    is fully specified, every documented sample validates against its own schema, every callback
-   has fields and a sample payload, every referenced file is present, and every service still
-   generates working code in all six languages.
+   has fields and a sample payload, every referenced file is present, every endpoint and
+   parameter appears in the curl reference, and every service still generates working code in
+   all six languages.
 
-A contract fix reaches generated code for free: `tools/codegen.mjs` reads the catalog, so
-`ideamart codegen` output follows the same day. Never hand-edit generated output — fix the
-catalog or the emitter.
+A contract fix reaches both derived forms for free: `tools/codegen.mjs` and
+`scripts/build-curl-reference.mjs` read the catalog, so `ideamart codegen` output and the curl
+reference follow the same day. Never hand-edit generated output — fix the catalog, the emitter
+or the builder.
+
+`references/13-curl-reference.md` is generated and carries a banner saying so. It is the
+tool-free path into the platform, so it matters most to the users who have the least: someone
+integrating in Rust or Elixir has no emitter and no template, only that page.
 
 Where the official documentation and a verified working call disagree, the catalog records the
 call that works, with no caveat in the text. The skill gives one answer; a hedge in a parameter
@@ -72,11 +80,14 @@ guidance in this repo may assume a particular runtime.
 Before pushing:
 
 ```bash
-npm test                             # catalog, tooling and packaging tests
-node scripts/sync-rules.mjs --check  # rule copies in sync
-bash -n scripts/*.sh                 # shell scripts parse
-node tools/ideamart.mjs list         # CLI still works
+npm test                                       # catalog, tooling and packaging tests
+node scripts/sync-rules.mjs --check            # rule copies in sync
+node scripts/build-curl-reference.mjs --check  # curl reference in sync with the catalog
+bash -n scripts/*.sh                           # shell scripts parse
+node tools/ideamart.mjs list                   # CLI still works
 ```
+
+Or `npm run check`, which runs both sync checks and the tests.
 
 ### Style
 

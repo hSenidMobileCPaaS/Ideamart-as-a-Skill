@@ -13,10 +13,19 @@ application can call.
 This skill makes you able to build a correct, production-shaped Ideamart integration from
 scratch, or add Ideamart to an existing product, **in any language**. The platform is JSON over
 HTTPS with a shared-secret credential pair; nothing about it privileges a particular runtime or
-framework. Build in whatever the host project already uses — the shipped templates cover
-TypeScript/Node, Python, Java, Go, PHP and C#, and
-[references/11-any-stack.md](references/11-any-stack.md) specifies the same integration in
-language-neutral terms for everything else.
+framework. Build in whatever the host project already uses. Two paths get you there and both
+come from the same contract:
+
+- **The wire.** [references/13-curl-reference.md](references/13-curl-reference.md) writes out
+  every endpoint as a runnable curl, with every parameter defined, the response it returns and
+  every response field explained. Nothing between you and the platform — translate the request
+  into the host language's HTTP client and you have the call. **Use this for any stack.**
+- **The emitters.** `codegen` writes the same calls out as code where an emitter exists —
+  TypeScript, Python, Java, Go, PHP, C# — with the templates in [templates/](templates/README.md)
+  as their worked-out form. A convenience on top of the contract, never a constraint on it.
+
+[references/11-any-stack.md](references/11-any-stack.md) specifies the integration around those
+calls — the seven components — in language-neutral terms.
 
 ---
 
@@ -60,7 +69,7 @@ no install, and never sees credentials.
 node tools/ideamart.mjs list [category]              # every service and callback
 node tools/ideamart.mjs show <id>                    # full contract: params, response, rules
 node tools/ideamart.mjs search "<query>"             # find by intent, e.g. "base size"
-node tools/ideamart.mjs curl <id> [key=value ...]    # build a valid, runnable request
+node tools/ideamart.mjs curl <id> [key=value ...]    # runnable request + param/response defs
 node tools/ideamart.mjs validate <id> '<json>'       # check a payload against the spec
 node tools/ideamart.mjs codegen <what> --lang=<x>    # emit ready-to-paste code (see below)
 node tools/ideamart.mjs code <statusCode>            # decode a status code + the fix
@@ -73,9 +82,29 @@ node tools/ideamart.mjs platform                     # base URLs, operators, con
 
 ## Write the call, do not hand-roll it
 
+Two ways, one contract. Both beat writing a call from memory.
+
+### Any language — the curl reference
+
+[references/13-curl-reference.md](references/13-curl-reference.md) is every endpoint written
+out at the wire: the request as a runnable curl, every parameter defined with its type and
+whether it is required, the exact response, and every response field explained — plus the same
+for all five inbound callbacks, with a command that replays each one against your own handler.
+
+Reach for it whenever the host project is not one of the six emitter languages, and read it
+first when a call is failing: running the curl by hand separates "my payload is wrong" from
+"my code is wrong" in one step. `node tools/ideamart.mjs curl <id> key=value …` prints the
+same thing for one service, filled in with your values and validated.
+
+Porting a curl is mechanical — the body, the headers and the branching are identical in every
+language. What surrounds the call is not, and that is
+[references/11-any-stack.md](references/11-any-stack.md).
+
+### The six emitter languages — codegen
+
 `codegen` emits working code straight from the contract, so the payload, the benign codes, the
-timeout and the `statusCode` branching cannot drift from the spec. Prefer it over writing a
-call from memory, then adapt the result to the project's conventions.
+timeout and the `statusCode` branching cannot drift from the spec. Adapt the result to the
+project's conventions.
 
 ```bash
 node tools/ideamart.mjs codegen <service-id>  --lang=<language>   # one wrapper, e.g. caas-direct-debit
@@ -87,17 +116,18 @@ node tools/ideamart.mjs codegen <callback-id> --lang=<language>   # one handler,
 ```
 
 Languages: `typescript`, `python`, `java`, `go`, `php`, `csharp`. Add `--out=<dir>` to write
-files instead of printing. For a stack with no emitter, generate the closest one and port it —
-the shape is identical everywhere.
+files instead of printing. For a stack with no emitter, work from the curl reference — do not
+introduce one of these six languages into a project that is not written in it.
 
 `--json` on any command for machine-readable output. If you cannot run commands — or Node is
 not available — read `catalog/ideamart-api.json` directly; it is plain JSON and holds the same
-data. The CLI is a documentation reader, not part of the integration: it makes no network
-calls, never sees a credential, and puts no constraint on the stack you build in.
+data, and [references/13-curl-reference.md](references/13-curl-reference.md) is the same
+contract in prose. The CLI is a documentation reader, not part of the integration: it makes no
+network calls, never sees a credential, and puts no constraint on the stack you build in.
 
-**Working order:** `search`/`list` to find the service → `show` for the exact contract →
-`codegen` the call → `validate` the payload it produces → `code`/`diagnose` when something
-fails.
+**Working order:** `search`/`list` to find the service → `show` for the exact contract → the
+curl reference (or `codegen`, in one of the six languages) for the call → `validate` the
+payload → `code`/`diagnose` when something fails.
 
 **Whole-integration order:** [references/12-implementation-playbook.md](references/12-implementation-playbook.md)
 takes a project from nothing to production, and covers the three starting points — greenfield,
@@ -169,7 +199,8 @@ user requests production approval.
 | Voice / IVR | Not in public docs — see extension pattern | — | [06-lbs-ivr](references/06-lbs-ivr.md) |
 
 Production host for everything except LBS: `https://api.ideamart.io` (alias
-`https://api.dialog.lk`).
+`https://api.dialog.lk`). Every row above as a runnable request with its parameters and
+response defined: [references/13-curl-reference.md](references/13-curl-reference.md).
 
 **Configure one environment variable per provisioned service** — `IDEAMART_SMS_SEND_URL`,
 `IDEAMART_USSD_SEND_URL`, and so on — never one shared base URL. An application can only call
@@ -202,6 +233,10 @@ endpoint. [templates/](templates/README.md) has complete working implementations
 this in six languages — take the closest one rather than inventing a new structure, and read
 [references/11-any-stack.md](references/11-any-stack.md) if the project's stack is not among
 them.
+
+Every endpoint filled in with real values — request, parameters, response and response fields —
+is [references/13-curl-reference.md](references/13-curl-reference.md). That page plus the seven
+components is a complete integration in a language this repo has never heard of.
 
 ### Addressing
 
@@ -264,6 +299,7 @@ Read the one that matches the task. Do not guess parameter names — they are al
 | [10-production-checklist.md](references/10-production-checklist.md) | Pre-go-live verification |
 | [11-any-stack.md](references/11-any-stack.md) | The integration specified language-neutrally: the seven components, per-language notes, port acceptance checklist |
 | [12-implementation-playbook.md](references/12-implementation-playbook.md) | A to Z: greenfield / mid-build / retrofit, the four flow recipes, testing without an account, go-live |
+| [13-curl-reference.md](references/13-curl-reference.md) | **Every endpoint as a runnable curl** — request, parameter definitions, response, response-field definitions, per-endpoint status codes, and the same for all five callbacks |
 
 Templates in [templates/](templates/README.md) are working reference implementations of the
 same integration — config, client, callback handlers and session store — in **TypeScript/Node,

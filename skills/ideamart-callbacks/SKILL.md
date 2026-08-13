@@ -11,10 +11,15 @@ USSD does not work, and you never learn that a subscriber left or a charge faile
 ```bash
 node tools/ideamart.mjs list --direction=inbound            # all five
 node tools/ideamart.mjs show ussd-receive                   # payload + rules
+node tools/ideamart.mjs curl sms-mo                         # fields, plus a command that
+                                                            # replays it against your handler
 node tools/ideamart.mjs codegen callbacks --lang=<language> # all five handlers, written
 node tools/ideamart.mjs codegen ussd-receive --lang=<lang>  # just one
-node tools/ideamart.mjs curl sms-mo                         # a test command for your handler
 ```
+
+All five are written out in `references/13-curl-reference.md`: what arrives, every field
+defined, what you must respond, the dedupe key, and a curl that replays the exact payload
+against your own route. Use that in any language the emitters do not cover.
 
 ## The contract — identical for all five
 
@@ -48,6 +53,8 @@ The payloads are fully specified, so post them yourself:
 It covers valid, malformed, wrong-app, missing-field, oversized **and duplicate** payloads —
 the duplicate test is the one people skip. It is plain curl, so it tests a handler written in
 any language.
+
+Every payload, field by field, with its replay command: `references/13-curl-reference.md`.
 
 Working handlers, in the language of the host project:
 `templates/typescript/callbacks-nextjs.ts` (Next.js), `templates/python/callbacks_fastapi.py`,

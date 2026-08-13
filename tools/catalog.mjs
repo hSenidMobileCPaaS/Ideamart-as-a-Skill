@@ -171,14 +171,22 @@ export function validatePayload(entry, payload) {
   return { valid: errors.length === 0, errors, warnings };
 }
 
-const shellQuote = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
-
-/** Render a service call as a runnable curl command. */
+/**
+ * Render a service call as a runnable curl command.
+ *
+ * The body goes in through an unquoted heredoc so that $IDEAMART_APP_ID and
+ * $IDEAMART_PASSWORD expand from the environment: the command runs as printed,
+ * and no credential is ever written down. Same shape as
+ * references/13-curl-reference.md, so the two paths cannot drift.
+ */
 export function toCurl(service, payload, baseUrl) {
   return [
-    `curl -X POST '${urlFor(service, baseUrl)}' \\`,
+    `curl -sS -X POST '${urlFor(service, baseUrl)}' \\`,
     `  --header 'Content-Type: application/json' \\`,
-    `  --data ${shellQuote(JSON.stringify(payload, null, 2))}`,
+    `  --max-time 15 \\`,
+    `  --data @- <<REQUEST`,
+    JSON.stringify(payload, null, 2),
+    `REQUEST`,
   ].join("\n");
 }
 

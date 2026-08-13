@@ -39,15 +39,21 @@ None of that is the model being careless. It is the model not having the contrac
 
 This repo gives it the contract: every endpoint, every parameter, every response field, every
 status code, all five callbacks, and the handful of rules that separate a working integration
-from a suspended one. Then it **writes the code** — `codegen` emits the client, the callback
-handlers, the models and the complete error-code module in six languages, straight from that
-contract.
+from a suspended one.
 
 **In whatever language you already use.** Ideamart is JSON over HTTPS, so nothing here is tied
-to one runtime: working templates ship for TypeScript/Node, Python, Java, Go, PHP and C#, and
-[references/11-any-stack.md](references/11-any-stack.md) specifies the same integration
-language-neutrally — seven components, per-language notes, and an acceptance checklist — for
-Ruby, Rust, Kotlin, Elixir or anything else.
+to one runtime:
+
+- [**Every endpoint as a runnable curl**](references/13-curl-reference.md) — the request, every
+  parameter defined, the response, every response field explained, and the same for all five
+  callbacks. Translate it into any HTTP client and you have the call. No tooling required, and
+  no language is second-class.
+- **`codegen`** emits the client, the callback handlers, the models and the complete error-code
+  module in **six languages** from that same contract, with working templates for
+  TypeScript/Node, Python, Java, Go, PHP and C#.
+- [**references/11-any-stack.md**](references/11-any-stack.md) specifies the integration around
+  the calls language-neutrally — seven components, per-language notes, and an acceptance
+  checklist — for Ruby, Rust, Kotlin, Elixir or anything else.
 
 ---
 
@@ -183,7 +189,7 @@ Return the number of subscribers currently registered to the application.
 | `list [category]` | What services exist? |
 | `show <id>` | What exactly does this call take and return? |
 | `search "<query>"` | Which service does the thing I want? |
-| `curl <id> [k=v]` | Give me a valid, runnable request. |
+| `curl <id> [k=v]` | Give me a runnable request, with the parameters and the response defined. |
 | `codegen <what> --lang=<x>` | **Write the implementation for me.** |
 | `validate <id> '<json>'` | Is this payload correct? |
 | `code <statusCode>` | What does this error mean, and what do I do? |
@@ -209,10 +215,43 @@ $ node tools/ideamart.mjs validate sms-send '{"message":"hi","destinationAddress
     ✗ "destinationAddresses" must be an ARRAY, got string. This is the most common Ideamart integration bug.
 ```
 
+### Every endpoint as curl — the path for any language
+
+No SDK, no emitter, no Node: [references/13-curl-reference.md](references/13-curl-reference.md)
+writes out all 11 endpoints and all 5 callbacks at the wire — the request, every parameter
+defined, the response, every response field explained, and the status codes that endpoint can
+return.
+
+```bash
+curl -sS -X POST "$IDEAMART_CAAS_DEBIT_URL" \
+  -H 'Content-Type: application/json' \
+  --max-time 15 \
+  -d @- <<REQUEST
+{
+  "applicationId": "$IDEAMART_APP_ID",
+  "password": "$IDEAMART_PASSWORD",
+  "externalTrxId": "12345678901234567890123456789012",
+  "subscriberId": "tel:94771234567",
+  "amount": "1",
+  "currency": "LKR"
+}
+REQUEST
+```
+
+| `externalTrxId` | **Required** | Your transaction ID. Max 32 characters. Persist BEFORE calling — it is the idempotency key. |
+|---|---|---|
+| `subscriberId` | **Required** | MSISDN or hash key of the subscriber to charge. |
+| `amount` | **Required** | Amount to charge, sent as a string. Hold as a decimal type in your own code. |
+
+Credentials come from the environment, so nothing on the page is a secret and nothing you copy
+can commit one. The document is generated from the catalog and CI fails if it drifts, so a
+Ruby, Rust, Kotlin or Elixir integration works from exactly the same contract as a TypeScript
+one — and running a call by hand is the fastest way to tell a bad payload from bad code.
+
 ### It writes the call, in your language
 
-`codegen` generates from the same catalog, so the payload, the timeout, the benign codes and
-the `statusCode` branching cannot drift from the contract:
+Where an emitter exists, `codegen` generates from the same catalog, so the payload, the timeout,
+the benign codes and the `statusCode` branching cannot drift from the contract:
 
 ```bash
 $ node tools/ideamart.mjs codegen caas-direct-debit --lang=python
@@ -246,6 +285,8 @@ def debit(*, external_trx_id, subscriber_id, amount, currency="LKR", ...):
 | `callbacks` | All five inbound handlers |
 
 Languages: **typescript · python · java · go · php · csharp**. `--out=<dir>` writes the files.
+Anything else works from the curl reference above — the shape is identical, and porting a curl
+is mechanical.
 
 And it turns a symptom into a fix:
 
@@ -318,7 +359,7 @@ deployment story.
 | Go | config, client, `net/http` callbacks (standard library only) |
 | PHP | config, client, framework-neutral callbacks with Laravel notes |
 | C# / .NET | options, typed client, ASP.NET Core callbacks + background worker |
-| Anything else | [references/11-any-stack.md](references/11-any-stack.md) — the seven components, per-language notes, acceptance checklist |
+| Anything else | [references/13-curl-reference.md](references/13-curl-reference.md) — every endpoint as curl, with definitions — plus [references/11-any-stack.md](references/11-any-stack.md) for the seven components, per-language notes and an acceptance checklist |
 
 Plus the complete official status-code table, all five callback contracts, and the operational
 practices that keep an application approved.
@@ -392,12 +433,14 @@ SKILL.md · AGENTS.md              Entry points (Claude Code / everyone else)
 catalog/ideamart-api.json         The whole contract as structured data
 tools/ideamart.mjs                Offline CLI over the catalog
 tools/codegen.mjs                 Code generation for six languages
-references/                       12 guides: per-service, callbacks, codes, security, go-live,
-                                  the language-neutral spec, and the A-to-Z playbook
+references/                       13 guides: per-service, callbacks, codes, security, go-live,
+                                  the language-neutral spec, the A-to-Z playbook, and every
+                                  endpoint as curl with its definitions
 templates/                        .env.example + working config, client and callback handlers
                                   in TypeScript/Node, Python, Java, Go, PHP and C#
 skills/ · commands/               7 task skills and their slash commands
-scripts/                          Smoke tests (bash + PowerShell), callback tests, rule sync
+scripts/                          Smoke tests (bash + PowerShell), callback tests, rule sync,
+                                  curl-reference build
 docs/agent-support.md             Which agent reads which file
 ```
 
@@ -406,15 +449,17 @@ docs/agent-support.md             Which agent reads which file
 ## Development
 
 ```bash
-npm test                             # catalog + tooling tests
-node scripts/sync-rules.mjs --check  # agent rule copies in sync with AGENTS.md
-node scripts/sync-rules.mjs          # regenerate them
+npm test                                     # catalog + tooling tests
+npm run check                                # tests + everything generated is in sync
+node scripts/sync-rules.mjs                  # regenerate the agent rule copies
+node scripts/build-curl-reference.mjs        # regenerate the curl reference
 ```
 
-`AGENTS.md` is the single source for every agent rule file; the seven copies are generated and
-CI fails if they drift. The test suite verifies that every referenced status code exists, every
-parameter is fully specified, every documented sample validates against its own schema, and no
-credential-shaped string is committed.
+Two things are generated and CI fails if they drift: the seven agent rule files, from
+`AGENTS.md`, and `references/13-curl-reference.md`, from `catalog/ideamart-api.json`. The test
+suite verifies that every referenced status code exists, every parameter is fully specified,
+every documented sample validates against its own schema, every endpoint and parameter appears
+in the curl reference, and no credential-shaped string is committed.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Corrections to the API contract are the most valuable
 contribution — cite the docs page or paste the observed response.

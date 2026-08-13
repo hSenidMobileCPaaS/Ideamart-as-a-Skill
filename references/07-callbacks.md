@@ -200,4 +200,7 @@ curl -X POST http://localhost:3000/api/ideamart/ussd \
 Build a test for each of: valid payload, malformed JSON, wrong `applicationId`, missing
 required field, and **the same payload twice** (the idempotency test — the one people skip).
 
-Ready-made payloads for every callback: [scripts/smoke-test.sh](../scripts/smoke-test.sh).
+Ready-made payloads for every callback: [scripts/smoke-test.sh](../scripts/smoke-test.sh), and
+all five written out field by field — what arrives, what you must respond, the dedupe key, and a
+command that replays the exact payload against your route — in
+[13-curl-reference.md](13-curl-reference.md).

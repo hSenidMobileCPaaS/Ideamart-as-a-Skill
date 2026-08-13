@@ -25,8 +25,9 @@ Ask, or find in the code:
 
 Ideamart is JSON over HTTPS, so build in whatever the project already uses. `templates/` ships
 config + client + callbacks for **TypeScript/Node, Python, Java, Go, PHP and C#**
-(`templates/README.md` indexes them); for anything else, follow the seven components and the
-acceptance checklist in `references/11-any-stack.md`. Never add a second runtime for this.
+(`templates/README.md` indexes them); for anything else, take the calls from
+`references/13-curl-reference.md` and follow the seven components and the acceptance checklist
+in `references/11-any-stack.md`. Never add a second runtime for this.
 
 ## 3. Config before code
 
@@ -37,20 +38,31 @@ config file from your language's directory. Requirements:
 - Validate at startup and **fail loudly** on anything missing.
 - `.env` git-ignored; `.env.example` placeholders only.
 
-## 4. One client, one `post()` helper — generate it
+## 4. One client, one `post()` helper
+
+Every Ideamart call is the same HTTPS POST, so the client is one `post()` that injects
+credentials, sets a timeout and raises a typed error on non-`S1000`, plus a thin wrapper per
+service. Two ways to get there, both from the same contract:
+
+**In one of the six emitter languages** — TypeScript, Python, Java, Go, PHP, C#:
 
 ```bash
 node tools/ideamart.mjs codegen client --lang=<language> --out=<your integration dir>
 node tools/ideamart.mjs codegen errors --lang=<language> --out=<same dir>
 ```
 
-That is every service wrapper over a single `post()` that injects credentials, sets a timeout
-and raises a typed error on non-`S1000`, plus all 86 status codes with their handling classes.
-Adapt it to the project's conventions — swap in the project's HTTP client, logger and config
-loader — but keep the `statusCode` branching and the benign codes exactly as generated.
+That is every service wrapper plus all 86 status codes with their handling classes. Adapt it to
+the project's conventions — swap in the project's HTTP client, logger and config loader — but
+keep the `statusCode` branching and the benign codes exactly as generated. One call at a time:
+`node tools/ideamart.mjs codegen <service-id> --lang=<language>`.
 
-Generating one call at a time: `node tools/ideamart.mjs codegen <service-id> --lang=<language>`.
-Never recall parameter names; `show <id>` has the exact contract.
+**In any other language** — write the wrappers from `references/13-curl-reference.md`. Each
+endpoint is there as a runnable curl with every parameter defined and every response field
+explained; translate the request into the project's HTTP client, one wrapper per service, and
+add the seven components from `references/11-any-stack.md` around them. Run the curl first to
+confirm the payload works before writing a line of it.
+
+Never recall parameter names; `show <id>` and the curl reference have the exact contract.
 
 ## 5. Callbacks
 

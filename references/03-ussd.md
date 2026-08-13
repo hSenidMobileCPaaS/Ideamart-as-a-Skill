@@ -203,3 +203,6 @@ USSD is frequently the *front door* to another API:
   you"), then debit asynchronously and SMS the result. A charging call is far slower than a
   USSD session allows.
 - **USSD → SMS:** the standard pattern for delivering anything longer than one screen.
+
+`POST /ussd/send` and the inbound USSD callback as runnable curls, with every parameter and
+response field defined: [13-curl-reference.md](13-curl-reference.md).

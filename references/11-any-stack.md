@@ -9,6 +9,12 @@ whatever the host project already uses. The files in [templates/](../templates/)
 seven components written out in several languages — read the one closest to your stack, but
 treat *this* page as the contract.
 
+**The calls themselves are in [13-curl-reference.md](13-curl-reference.md)** — every endpoint as
+a runnable curl, with every parameter defined, the response, and every response field explained,
+plus all five callbacks. That page and this one are together a complete integration in a
+language nobody here has written a template for: it gives you the wire, this gives you what
+surrounds it.
+
 > Rule of thumb: **match the host project.** A Django codebase gets Python, a Spring service
 > gets Java, a Laravel app gets PHP. Introducing a second runtime "because the sample was in
 > TypeScript" is a worse outcome than any template mismatch.
@@ -243,18 +249,20 @@ against a handler in any language. Verify the whole outbound path with
 | [templates/php/](../templates/php/) | config, client, callback front controller | cURL extension; Laravel notes inline |
 | [templates/csharp/](../templates/csharp/) | options, typed client, ASP.NET Core callback endpoints | `IHttpClientFactory`, `System.Text.Json` |
 
-No template for your stack — Ruby, Rust, Kotlin, Elixir, Scala, Dart on a server? Implement
-the seven components above, use the closest template for the shape, and run the acceptance
-checklist. The contract itself is in [`catalog/ideamart-api.json`](../catalog/ideamart-api.json),
-which is plain JSON that every language can read directly.
+No template for your stack — Ruby, Rust, Kotlin, Elixir, Scala, Dart on a server? Take the
+calls from [13-curl-reference.md](13-curl-reference.md), implement the seven components above
+around them, use the closest template for the shape, and run the acceptance checklist. The
+contract also ships as [`catalog/ideamart-api.json`](../catalog/ideamart-api.json), plain JSON
+that every language can read directly.
 
 ---
 
 ## Tooling versus stack
 
 `tools/ideamart.mjs` runs on Node. That is a property of the *documentation tool*, not of your
-integration — it makes no network calls, never sees a credential, and generates nothing. If
-Node is not available on your machine, read the same data straight out of
+integration — it makes no network calls and never sees a credential. If Node is not available on
+your machine, nothing is lost: [13-curl-reference.md](13-curl-reference.md) is the same contract
+as prose, and the underlying data is in
 [`catalog/ideamart-api.json`](../catalog/ideamart-api.json):
 
 ```bash

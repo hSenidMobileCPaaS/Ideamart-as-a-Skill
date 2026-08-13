@@ -271,9 +271,13 @@ test("built payloads never contain a literal credential", () => {
 test("curl output is a single runnable POST with a JSON body", () => {
   const s = findEntry("subscription-query-base");
   const curl = toCurl(s, buildPayload(s, {}));
-  assert.match(curl, /^curl -X POST 'https:\/\/api\.ideamart\.io\/subscription\/query-base'/);
+  assert.match(curl, /^curl -sS -X POST 'https:\/\/api\.ideamart\.io\/subscription\/query-base'/);
   assert.match(curl, /Content-Type: application\/json/);
-  assert.match(curl, /--data '/);
+  assert.match(curl, /--max-time \d+/);
+  // The heredoc is unquoted on purpose: the credential variables must expand,
+  // so the command runs as printed without a secret ever being written down.
+  assert.match(curl, /--data @- <<REQUEST\n[\s\S]*\nREQUEST$/);
+  assert.match(curl, /"applicationId": "\$IDEAMART_APP_ID"/);
 });
 
 /* ── Diagnosis ───────────────────────────────────────────────────────────── */
@@ -298,9 +302,60 @@ test("diagnose degrades to search when nothing matches", () => {
 
 /* ── Repo consistency ────────────────────────────────────────────────────── */
 
-test("all twelve reference documents exist", () => {
+test("all thirteen reference documents exist", () => {
   const files = readdirSync(join(repoRoot, "references")).filter((f) => f.endsWith(".md"));
-  assert.equal(files.length, 12, `expected 12 reference docs, found ${files.length}`);
+  assert.equal(files.length, 13, `expected 13 reference docs, found ${files.length}`);
+});
+
+/**
+ * The curl reference is the tool-free path into the platform: an agent working
+ * in Ruby, Rust or Kotlin gets no emitter, so this page is the whole contract it
+ * has. It is generated from the catalog, and CI fails if it drifts.
+ */
+test("the curl reference is in sync with the catalog", () => {
+  assert.doesNotThrow(() =>
+    execFileSync("node", ["scripts/build-curl-reference.mjs", "--check"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    })
+  );
+});
+
+test("the curl reference documents every endpoint, parameter and response field", () => {
+  const doc = readFileSync(join(repoRoot, "references", "13-curl-reference.md"), "utf8");
+  const missing = [];
+  // Pipes are escaped in the generated tables, or they would split a cell.
+  const documents = (text) => doc.includes(String(text).replace(/\|/g, "\\|"));
+
+  for (const service of catalog.services) {
+    const url = service.absoluteUrl || `${catalog.baseUrls.primary}${service.path}`;
+    if (!doc.includes(`POST ${url}`)) missing.push(`endpoint ${url}`);
+    if (!doc.includes(`curl -sS -X POST "$${service.envVar}"`)) {
+      missing.push(`runnable request for ${service.id}`);
+    }
+    for (const p of service.parameters) {
+      if (!doc.includes(`\`${p.name}\``)) missing.push(`${service.id}.${p.name}`);
+      if (!documents(p.description)) missing.push(`definition of ${service.id}.${p.name}`);
+    }
+    for (const f of service.responseFields || []) {
+      if (!documents(f.description)) missing.push(`response field ${service.id}.${f.name}`);
+    }
+  }
+
+  for (const cb of catalog.callbacks) {
+    if (!doc.includes(cb.suggestedPath)) missing.push(`callback route ${cb.id}`);
+    for (const f of cb.fields) {
+      if (!documents(f.description)) missing.push(`definition of ${cb.id}.${f.name}`);
+    }
+  }
+
+  assert.deepEqual(missing, [], `curl reference is missing:\n${missing.join("\n")}`);
+});
+
+test("the curl reference contains no credential, only environment placeholders", () => {
+  const doc = readFileSync(join(repoRoot, "references", "13-curl-reference.md"), "utf8");
+  assert.match(doc, /"password": "\$IDEAMART_PASSWORD"/);
+  assert.doesNotMatch(doc, /"password"\s*:\s*"(?!\$IDEAMART_PASSWORD)[^"]{6,}"/);
 });
 
 /**

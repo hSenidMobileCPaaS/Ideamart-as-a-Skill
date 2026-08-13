@@ -11,6 +11,7 @@ Start with the tool, not with guesses:
 node tools/ideamart.mjs code E1303
 node tools/ideamart.mjs diagnose "callbacks never arrive"
 node tools/ideamart.mjs validate <id> '<payload>'
+node tools/ideamart.mjs curl <id> [key=value ...]   # reproduce the call outside your code
 ```
 
 ## Get the real error first
@@ -39,7 +40,12 @@ most "mysterious" Ideamart bugs are a clear error code that nothing was reading.
 1. **Is it every call or one call?** Every call points at `E1303`/`E1313` — configuration.
    One call points at that service's provisioning or your payload.
 2. **Is the payload even valid?** `node tools/ideamart.mjs validate <id> '<json>'`.
-3. **Is it environment-specific?** Compare the egress IP and the loaded config between the
+3. **Take the code out of it.** Run the endpoint by hand from
+   `references/13-curl-reference.md` (or `node tools/ideamart.mjs curl <id> key=value …`) **from
+   the same server**. A curl that works proves the payload, the credentials, the provisioning
+   and the egress IP are all fine, and the bug is in your code; a curl that fails gives you the
+   real `statusCode` with nothing swallowing it.
+4. **Is it environment-specific?** Compare the egress IP and the loaded config between the
    working and failing environments.
 
 ## Escalating

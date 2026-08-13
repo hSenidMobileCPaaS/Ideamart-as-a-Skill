@@ -28,6 +28,8 @@ jobs:
           node-version: 22
       - name: Agent rule copies are in sync with AGENTS.md
         run: node scripts/sync-rules.mjs --check
+      - name: Curl reference is in sync with the catalog
+        run: node scripts/build-curl-reference.mjs --check
       - name: Catalog is valid JSON
         run: node -e "JSON.parse(require('fs').readFileSync('catalog/ideamart-api.json','utf8'))"
       - name: Manifests are valid JSON
@@ -41,6 +43,7 @@ jobs:
         run: |
           node tools/ideamart.mjs list --json > /dev/null
           node tools/ideamart.mjs show sms-send --json > /dev/null
+          node tools/ideamart.mjs curl sms-send --json > /dev/null
           node tools/ideamart.mjs code E1303 --json > /dev/null
 
   secrets:

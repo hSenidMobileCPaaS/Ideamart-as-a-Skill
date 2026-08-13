@@ -14,15 +14,23 @@ as JSON-over-HTTPS APIs.
 ```bash
 node tools/ideamart.mjs list                          # what exists
 node tools/ideamart.mjs show <id>                     # exact contract
-node tools/ideamart.mjs codegen <id> --lang=<lang>    # write the call for me
+node tools/ideamart.mjs curl <id> [key=value ...]     # runnable request + param/response defs
+node tools/ideamart.mjs codegen <id> --lang=<lang>    # write the call for me (six languages)
 node tools/ideamart.mjs validate <id> '<json>'
 node tools/ideamart.mjs code <statusCode>
 ```
 
+`references/13-curl-reference.md` is the whole contract at the wire — every endpoint as a
+runnable curl, every parameter defined, the response and every response field, the status codes
+that endpoint returns, and all five callbacks with a command that replays each against your
+handler. **That page is the path for any language**, and the first thing to run by hand when a
+call fails.
+
 `codegen` targets: any service or callback id, or `client` / `errors` / `types` / `config` /
 `callbacks`. Languages: typescript, python, java, go, php, csharp. Generated code carries the
 credential injection, the timeout, the `tel:` normaliser, the benign codes and the `statusCode`
-branching, so it cannot drift from the contract.
+branching, so it cannot drift from the contract. No emitter for the project's language? Work
+from the curl reference — never add one of these six runtimes to a project written in another.
 
 Full command list: `node tools/ideamart.mjs help`. Add `--json` for machine-readable output.
 If you cannot run commands, or Node is not installed, read `catalog/ideamart-api.json` — same
@@ -50,15 +58,17 @@ debit retry all mean *the desired state already holds* — treat them as success
 ## Build it in the project's own stack
 
 Ideamart is JSON over HTTPS: no runtime is privileged, and a Node sidecar for a Python, Java,
-Go, PHP or .NET project is the wrong answer. Working implementations for all six ship in
-`templates/` (see `templates/README.md`); `references/11-any-stack.md` specifies the same
-seven components language-neutrally, with an acceptance checklist for stacks with no template.
+Go, PHP or .NET project is the wrong answer. Every call is one HTTPS POST with a JSON body —
+`references/13-curl-reference.md` has all of them, so Ruby, Rust, Kotlin, Elixir or anything
+else is a first-class target. Working implementations for six languages ship in `templates/`
+(see `templates/README.md`); `references/11-any-stack.md` specifies the same seven components
+language-neutrally, with an acceptance checklist for stacks with no template.
 
 ## Where the detail lives
 
-`references/01-getting-started.md` through `12-implementation-playbook.md`, and the
-per-language implementations in `templates/`. Read the reference for the service you are
-building before writing code.
+`references/01-getting-started.md` through `13-curl-reference.md`, and the per-language
+implementations in `templates/`. Read the reference for the service you are building before
+writing code.
 
 Taking a project from nothing to production — or adding Ideamart to an app that already has
 users — is `references/12-implementation-playbook.md`.

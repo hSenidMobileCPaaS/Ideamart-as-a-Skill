@@ -5,11 +5,17 @@ language and **any** starting point. Work top to bottom on a new project; jump t
 [§2](#2-entry-point-b--mid-build) or [§3](#3-entry-point-c--retrofit-into-a-live-application)
 if code already exists.
 
-The generator does the typing. Every step below that says *generate* means:
+Every step below that says *generate* means:
 
 ```bash
 node tools/ideamart.mjs codegen <what> --lang=<language> [--out=<dir>]
 ```
+
+That covers TypeScript, Python, Java, Go, PHP and C#. **In any other language, write the same
+thing by hand from [13-curl-reference.md](13-curl-reference.md)** — every endpoint is there as a
+runnable curl with its parameters and its response defined, so each *generate* step becomes
+"translate these requests into the project's HTTP client". Nothing else in this playbook
+changes: the order, the flows, the callbacks and the go-live gate are identical.
 
 ---
 
@@ -198,6 +204,10 @@ Five inbound routes, one contract. Generate them:
 node tools/ideamart.mjs codegen callbacks --lang=<language>
 ```
 
+In any other language, write them from [13-curl-reference.md](13-curl-reference.md), which gives
+each payload field by field, the response you must return, the dedupe key, and a curl that
+replays the exact payload against your route.
+
 | Callback | Fires when | Without it |
 |---|---|---|
 | MO SMS | user texts your shortcode | keyword opt-in and STOP silently do nothing |
@@ -222,7 +232,9 @@ node tools/ideamart.mjs codegen errors --lang=<language>
 ```
 
 That module gives you every published code, its handling class, the benign codes per operation,
-and `classify()` / `describe()` / `isBenign()`. Wire it in like this:
+and `classify()` / `describe()` / `isBenign()`. Outside the six emitter languages, build the
+same tables from [08-status-codes](08-status-codes.md) — or straight out of
+`catalog/ideamart-api.json`, which is where the emitter reads them from. Wire it in like this:
 
 | Class | Your behaviour |
 |---|---|
@@ -280,7 +292,8 @@ subscribers who can be charged real money?**
 |---|---|
 | See what exists | `ideamart list` |
 | Get one contract exactly | `ideamart show <service>` |
-| Write the call | `ideamart codegen <service> --lang=<language>` |
+| Write the call, any language | [13-curl-reference.md](13-curl-reference.md), or `ideamart curl <service> key=value …` |
+| Write the call, six languages | `ideamart codegen <service> --lang=<language>` |
 | Write the whole client | `ideamart codegen client --lang=<language>` |
 | Wire up error codes | `ideamart codegen errors --lang=<language>` |
 | Write the webhooks | `ideamart codegen callbacks --lang=<language>` |

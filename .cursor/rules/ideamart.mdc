@@ -20,9 +20,13 @@ charging and location as JSON-over-HTTPS APIs.
 direct carrier billing, or telco SMS in Sri Lanka.**
 
 The platform is JSON over HTTPS, so **any language builds a complete integration** — write it
-in whatever the host project already uses. Reference implementations ship for TypeScript/Node,
-Python, Java, Go, PHP and C#; [references/11-any-stack.md](references/11-any-stack.md)
-specifies the same integration language-neutrally for anything else.
+in whatever the host project already uses. Every endpoint is written out as a runnable curl,
+with its parameters and its response defined, in
+[references/13-curl-reference.md](references/13-curl-reference.md): translate the request into
+the project's HTTP client and you have the call, whatever the language. Reference
+implementations and code emitters exist for TypeScript/Node, Python, Java, Go, PHP and C# as a
+convenience on top of that, and [references/11-any-stack.md](references/11-any-stack.md)
+specifies the surrounding integration language-neutrally.
 
 ---
 
@@ -54,7 +58,7 @@ install, and never see credentials.
 node tools/ideamart.mjs list [category]              # every service and callback
 node tools/ideamart.mjs show <id>                    # full contract: params, response, rules
 node tools/ideamart.mjs search "<query>"             # find by intent, e.g. "base size"
-node tools/ideamart.mjs curl <id> [key=value ...]    # build a valid, runnable request
+node tools/ideamart.mjs curl <id> [key=value ...]    # runnable request + param/response defs
 node tools/ideamart.mjs validate <id> '<json>'       # check a payload against the spec
 node tools/ideamart.mjs codegen <what> --lang=<x>    # emit ready-to-paste code
 node tools/ideamart.mjs code <statusCode>            # decode a status code + the fix
@@ -71,13 +75,21 @@ data. The CLI is a documentation reader, not part of the integration, and constr
 about the stack you build in.
 
 **Use them in this order:** `search` or `list` to find the service → `show` for the exact
-contract → `codegen` the call → `validate` the payload it produces → `code`/`diagnose` when
-something fails.
+contract → the curl reference or `codegen` for the call → `validate` the payload → `code` /
+`diagnose` when something fails.
 
-### Generate the code, do not recall it
+### Write the call from the contract, not from memory
 
-`codegen` writes working code from the contract itself, so the payload, benign codes, timeout
-and `statusCode` branching cannot drift. Adapt the output to the project's conventions.
+**Any language — [references/13-curl-reference.md](references/13-curl-reference.md).** Every
+endpoint at the wire: a runnable curl, every parameter defined with type and requiredness, the
+exact response, every response field explained, the status codes that endpoint returns, and the
+same treatment for all five inbound callbacks including a command that replays each one against
+your handler. Porting is mechanical — body, headers and branching are identical everywhere.
+Run the curl by hand when a call fails; it separates a bad payload from bad code in one step.
+
+**The six emitter languages — `codegen`.** Working code from the same contract, so the payload,
+benign codes, timeout and `statusCode` branching cannot drift. Adapt it to the project's
+conventions.
 
 ```bash
 node tools/ideamart.mjs codegen <service-id>  --lang=<language>   # one wrapper
@@ -88,7 +100,8 @@ node tools/ideamart.mjs codegen callbacks     --lang=<language>   # all five inb
 ```
 
 Languages: `typescript`, `python`, `java`, `go`, `php`, `csharp`. `--out=<dir>` writes files.
-No emitter for your stack? Generate the closest and port it — the shape is identical.
+No emitter for your stack? Work from the curl reference — never introduce one of these six
+languages into a project that is not written in it.
 
 ## Read before writing code
 
@@ -106,6 +119,7 @@ No emitter for your stack? Generate the closest and port it — the shape is ide
 | Go-live checklist | [references/10-production-checklist.md](references/10-production-checklist.md) |
 | Building in a stack with no template | [references/11-any-stack.md](references/11-any-stack.md) |
 | Taking a project from nothing to production, or adding Ideamart to an existing app | [references/12-implementation-playbook.md](references/12-implementation-playbook.md) |
+| **Every endpoint as curl** — request, parameter definitions, response, response fields | [references/13-curl-reference.md](references/13-curl-reference.md) |
 
 Working reference implementations in [templates/](templates/README.md) for TypeScript/Node,
 Python, Java, Go, PHP and C#. Take the one matching the project's stack rather than inventing a
@@ -141,6 +155,9 @@ platform. See [templates/.env.example](templates/.env.example).
 | Charging notification | *your callback URL* |
 | Locate a subscriber | `POST https://api.dialog.lk/lbs/locate` |
 | IVR / voice | Not publicly documented — do not invent endpoints |
+
+Each of these as a runnable request, with every parameter and response field defined:
+[references/13-curl-reference.md](references/13-curl-reference.md).
 
 ---
 

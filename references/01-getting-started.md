@@ -184,7 +184,10 @@ curl -X POST 'https://api.ideamart.io/subscription/query-base' \
 | `E1309` | Subscription API not provisioned for this app |
 | Connection timeout | Network/firewall, or you are behind a proxy |
 
-More smoke tests: [scripts/smoke-test.sh](../scripts/smoke-test.sh).
+More smoke tests: [scripts/smoke-test.sh](../scripts/smoke-test.sh). Every other endpoint in the
+same runnable form, with its parameters and response defined:
+[13-curl-reference.md](13-curl-reference.md) — start there whatever language you will build in,
+because a call proven by hand is one you cannot get wrong in code.
 
 ## Support
 

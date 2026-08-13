@@ -199,4 +199,6 @@ in rather than assuming one set.
   them gets requests rejected rather than queued.
 
 Working `sendSms` and MO/DLR handlers in six languages: [templates/](../templates/README.md).
-Any other stack: [11-any-stack.md](11-any-stack.md).
+Any other stack: [11-any-stack.md](11-any-stack.md), with all three endpoints as runnable curls
+— parameters, response and response fields defined — in
+[13-curl-reference.md](13-curl-reference.md).
