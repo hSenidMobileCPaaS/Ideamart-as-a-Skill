@@ -1,6 +1,6 @@
 ---
 name: ideamart
-description: Build and integrate Ideamart (Dialog Axiata's Sri Lankan telco platform) services into any application — SMS, USSD, Subscription (register, unregister, status, query base size), OTP, CaaS charging (direct debit, balance query), and LBS. Use this whenever the user mentions Ideamart, IdeaPro, api.ideamart.io, MSISDN/`tel:` addressing, shortcode/keyword, USSD menus, subscriber base size, direct carrier billing, mobile-account charging, or telco SMS/USSD in Sri Lanka. Covers request/response contracts, callback (webhook) handlers, status codes, credential handling, and go-live requirements.
+description: Build and integrate Ideamart (Dialog Axiata's Sri Lankan telco platform) services into any application — SMS, USSD, Subscription (register, unregister, status, query base size), OTP, CaaS charging (direct debit, balance query), and LBS. Use this whenever the user mentions Ideamart, IdeaPro, api.ideamart.io, MSISDN/`tel:` addressing, shortcode/keyword, USSD menus, subscriber base size, direct carrier billing, mobile-account charging, or telco SMS/USSD in Sri Lanka. Also covers **OmniAI**, Ideamart's AI gateway — chat completions across Claude, Gemini and GPT models and image generation on an OpenAI-shaped API — so use this skill too whenever the user mentions OmniAI, omniai.ideamart.io, api.ideamart.io/omniai, or an Ideamart AI/LLM feature. Covers request/response contracts, callback (webhook) handlers, status codes, credential handling, and go-live requirements.
 ---
 
 # Ideamart Integration Skill
@@ -10,6 +10,13 @@ Dialog, Hutch (072 and 078) and Airtel. It exposes carrier capabilities — SMS,
 subscription lifecycle, mobile-account charging, location — as JSON-over-HTTPS APIs that any
 application can call.
 
+It also runs **OmniAI**, an AI gateway: one OpenAI-shaped API in front of Claude, Gemini and GPT
+models plus image generation, billed from an Ideamart token balance. It shares the brand and the
+host and almost nothing else — header credentials instead of body credentials, real HTTP status
+codes instead of the `S1000` envelope, no subscriber and no callbacks. It is covered here in
+full, kept deliberately separate so its conventions never get applied to a telco call or the
+other way round. See [references/14-omni-ai.md](references/14-omni-ai.md).
+
 This skill makes you able to build a correct, production-shaped Ideamart integration from
 scratch, or add Ideamart to an existing product, **in any language**. The platform is JSON over
 HTTPS with a shared-secret credential pair; nothing about it privileges a particular runtime or
@@ -17,7 +24,8 @@ framework. Build in whatever the host project already uses.
 
 **Every call comes from one place: [references/13-curl-reference.md](references/13-curl-reference.md).**
 It writes out every endpoint as a runnable curl, with every parameter defined, the response it
-returns and every response field explained — plus all five inbound callbacks. Translate the
+returns and every response field explained — plus all five inbound callbacks and both OmniAI
+endpoints. Translate the
 request into the host project's own HTTP client and idiom, and that is the call. There is no
 code generator here on purpose: a generator would serve a handful of languages and go stale as
 their idioms move, while a curl is the same call in every language and never expires.
@@ -29,10 +37,11 @@ for shape when one matches the project, never a reason to introduce one of those
 
 ---
 
-## The five rules you must never break
+## The rules you must never break
 
 These are the mistakes that cost service providers their app approval, their subscribers,
-or real money. Apply them without being asked.
+or real money. Apply them without being asked. (Five for the telco platform, plus one for the
+AI gateway.)
 
 1. **Never hardcode `applicationId` or `password`.** They go in environment variables, read
    through one config module that validates at startup. Never in source, never in a client
@@ -56,6 +65,12 @@ or real money. Apply them without being asked.
    persist it *before* the call, and never retry with a fresh one — a retry with a new ID
    double-charges a real person.
 
+6. **Never let subscriber identity reach an OmniAI prompt.** Prompts leave your trust boundary
+   and reach a third-party model provider. No MSISDN, no `subscriberId` (a masked hash is still
+   a stable identifier), no OTP, no credential — and cap every AI call with
+   `max_completion_tokens`, because an uncapped loop empties a shared prepaid balance. See
+   [references/14-omni-ai.md](references/14-omni-ai.md).
+
 ---
 
 ## Query the contract, do not recall it
@@ -77,6 +92,7 @@ node tools/ideamart.mjs practices [severity]         # security and reliability 
 node tools/ideamart.mjs checklist                    # go-live checklist
 node tools/ideamart.mjs reference <doc>              # print a reference document
 node tools/ideamart.mjs platform                     # base URLs, operators, conventions
+node tools/ideamart.mjs omniai [models|errors]       # the OmniAI gateway: auth, models, errors
 ```
 
 `--json` on any command for machine-readable output. If you cannot run commands — or Node is
@@ -91,7 +107,8 @@ network calls, never sees a credential, and puts no constraint on the stack you 
 from.** Each endpoint is written out at the wire: the request as a runnable curl, every
 parameter defined with its type and whether it is required, the exact response, every response
 field explained, and that endpoint's status codes with their handling class — plus the same for
-all five inbound callbacks, each with a command that replays it against your own handler.
+all five inbound callbacks, each with a command that replays it against your own handler, and
+both OmniAI endpoints with their own auth and error tables.
 
 Translate the request into the host project's HTTP client and idiom. That is the whole job for
 the call itself: the body, the headers and the branching are identical in every language, so
@@ -135,7 +152,8 @@ it; you can still build and test the whole integration against the local mock fi
 
 **Step 2 — Pick the services.** Map the product requirement to APIs using the table below.
 Most real applications need *Subscription + SMS* at minimum; charging apps add *CaaS*;
-feature-phone reach adds *USSD*.
+feature-phone reach adds *USSD*; anything generating text or images adds *OmniAI*, which needs
+its own key from <https://omniai.ideamart.io> rather than IdeaPro provisioning.
 
 **Step 3 — Pick the stack, then scaffold config before code.** The stack is the host project's,
 not the template's: a Django codebase gets Python, a Spring service gets Java, a Laravel app
@@ -181,6 +199,8 @@ user requests production approval.
 | Be told the outcome of a charge | Charging Notification | *your callback URL* | [05-caas](references/05-caas.md), [07-callbacks](references/07-callbacks.md) |
 | Locate a subscriber | LBS Get Location | `POST https://api.dialog.lk/lbs/locate` | [06-lbs-ivr](references/06-lbs-ivr.md) |
 | Voice / IVR | Not in public docs — see extension pattern | — | [06-lbs-ivr](references/06-lbs-ivr.md) |
+| **Ask a model / generate text** | OmniAI Chat Completions | `POST https://api.ideamart.io/omniai/api/v1/chat/completions` | [14-omni-ai](references/14-omni-ai.md) |
+| **Generate an image** | OmniAI Image Generation | `POST https://api.ideamart.io/omniai/api/v1/images/generations` | [14-omni-ai](references/14-omni-ai.md) |
 
 Production host for everything except LBS: `https://api.ideamart.io` (alias
 `https://api.dialog.lk`). Every row above as a runnable request with its parameters and
@@ -222,6 +242,12 @@ Every endpoint filled in with real values — request, parameters, response and 
 is [references/13-curl-reference.md](references/13-curl-reference.md). That page plus the seven
 components is a complete integration in a language this repo has never heard of.
 
+**OmniAI is the one exception to every sentence above.** Its credential is an `Authorization`
+header (`app_<keyId>.<keyValue>`, verbatim, no `Bearer`), it returns real HTTP status codes with
+an `error` object and no `statusCode` field, and it needs a client of its own: one shared HTTP
+helper will apply exactly one of the two conventions and be wrong for half your calls.
+[references/14-omni-ai.md](references/14-omni-ai.md) has the whole contract.
+
 ### Addressing
 
 Subscriber addresses are **always** prefixed `tel:` with no `+` and no spaces:
@@ -255,6 +281,12 @@ Normalise once, in one function, at the boundary. Never string-concatenate `tel:
   whitelisted origin through a proxy. That is a local-development crutch. In production the
   platform sees your real egress IP, and sending forged headers to a carrier is exactly the
   kind of thing that gets an app suspended.
+- **OmniAI's key is not IP-whitelisted.** Unlike every telco endpoint, a leaked OmniAI key
+  works from anywhere in the world until you rotate it — and it spends a prepaid balance. There
+  is no network control standing between an exposed key and your money.
+- **An AI answer cannot be generated inside a callback.** A completion takes tens of seconds; a
+  USSD session dies in far less and Ideamart wants `S1000` immediately. Acknowledge first,
+  generate out of band, deliver by MT SMS or on the next screen.
 - **TLS:** some Ideamart hosts serve an incomplete certificate chain, which makes strict
   clients fail — Node, Python, Java, Go and .NET all reject it where a browser papers over it.
   Disabling verification (`rejectUnauthorized: false`, `verify=False`, `InsecureSkipVerify`,
@@ -283,7 +315,8 @@ Read the one that matches the task. Do not guess parameter names — they are al
 | [10-production-checklist.md](references/10-production-checklist.md) | Pre-go-live verification |
 | [11-any-stack.md](references/11-any-stack.md) | The integration specified language-neutrally: the seven components, per-language notes, port acceptance checklist |
 | [12-implementation-playbook.md](references/12-implementation-playbook.md) | A to Z: greenfield / mid-build / retrofit, the four flow recipes, testing without an account, go-live |
-| [13-curl-reference.md](references/13-curl-reference.md) | **Every endpoint as a runnable curl** — request, parameter definitions, response, response-field definitions, per-endpoint status codes, and the same for all five callbacks |
+| [13-curl-reference.md](references/13-curl-reference.md) | **Every endpoint as a runnable curl** — request, parameter definitions, response, response-field definitions, per-endpoint status codes, and the same for all five callbacks and both OmniAI endpoints |
+| [14-omni-ai.md](references/14-omni-ai.md) | **OmniAI** — the AI gateway: auth, models, chat completions, image generation, the error table, and the rules for putting a model call inside a telco flow |
 
 Templates in [templates/](templates/README.md) are working reference implementations of the
 same integration — config, client, callback handlers and session store — in **TypeScript/Node,

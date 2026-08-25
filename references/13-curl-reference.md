@@ -35,6 +35,11 @@ Content-Type: application/json
   A masked application receives a hash (`tel:hu3b84346f…`) instead of a number; it is opaque,
   so send back exactly what you received.
 - **LBS is on a different host** (`https://api.dialog.lk/lbs/locate`) from everything else.
+- **OmniAI is the one exception to all of the above.** The AI gateway
+  (`https://api.ideamart.io/omniai/api`) authenticates with an `Authorization` header,
+  returns real HTTP status codes with an `error` object, and has no subscriber, no `tel:`
+  address and no callbacks. It is at the [end of this page](#the-ai-gateway--omniai), kept
+  separate so its conventions never get applied to a telco call or the other way round.
 
 ## Before you run anything
 
@@ -101,6 +106,11 @@ the safest way to prove that your credentials, your provisioning and your egress
 | [USSD Receive](#ussd-receive) | `POST <your-host>/api/ideamart/ussd` | USSD API settings |
 | [Subscription Notification](#subscription-notification) | `POST <your-host>/api/ideamart/subscription/notification` | Subscription API settings |
 | [Charging Notification](#charging-notification) | `POST <your-host>/api/ideamart/charging/notification` | CaaS Charging Notification URL |
+
+| AI gateway | Endpoint | Environment variable |
+|---|---|---|
+| [OmniAI Chat Completions](#omniai-chat-completions) | `POST https://api.ideamart.io/omniai/api/v1/chat/completions` | `OMNIAI_CHAT_COMPLETIONS_URL` |
+| [OmniAI Image Generation](#omniai-image-generation) | `POST https://api.ideamart.io/omniai/api/v1/images/generations` | `OMNIAI_IMAGE_GENERATIONS_URL` |
 
 ---
 
@@ -1431,6 +1441,329 @@ PAYLOAD
 - Reconcile by externalTrxId against your own ledger: this is how a charge that timed out gets its final answer.
 - Deduplicate on externalTrxId + statusCode. A duplicate that double-counts revenue is a real bug.
 - Acknowledge with S1000 before doing the reconciliation work.
+
+---
+
+# The AI gateway — OmniAI
+
+Ideamart's AI gateway. One OpenAI-shaped API in front of several model providers — chat completions across Claude, Gemini and GPT models, and image generation — billed against an Ideamart token balance instead of a per-provider account.
+
+It is a separate product from everything above, and the differences are the kind that break an
+integration quietly rather than loudly:
+
+- Credentials go in an Authorization HEADER, not in the JSON body. There is no applicationId and no password.
+- Failures come back as real HTTP status codes with an error object. There is no statusCode/S1000 envelope, so the telco branching rule is inverted here: on OmniAI you DO check the HTTP status.
+- It is a separate product with a separate key and a separate balance. An Ideamart application password will not authenticate an OmniAI call, and an OmniAI key will not authenticate an SMS send.
+- Nothing about it is Sri-Lanka-specific: there is no MSISDN, no tel: addressing, no operator and no subscriber.
+- Nothing about it is a callback. OmniAI never calls you; there is no webhook to register.
+
+Get a key at https://omniai.ideamart.io, then export it alongside the endpoints:
+
+```bash
+export OMNIAI_API_KEY='app_XXXXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'   # never commit it
+export OMNIAI_CHAT_COMPLETIONS_URL='https://api.ideamart.io/omniai/api/v1/chat/completions'
+export OMNIAI_IMAGE_GENERATIONS_URL='https://api.ideamart.io/omniai/api/v1/images/generations'
+```
+
+`--max-time 120` rather than 15 on these: a large completion or a high-quality image
+legitimately takes tens of seconds, and a 15-second timeout will cancel a call you have already
+been billed for. The heredoc is quoted (`<<'REQUEST'`) because nothing in the body needs to
+expand and a `$` inside a prompt must survive the shell.
+
+**Models:** `claude-sonnet-4` (Anthropic), `gemini-2.5-pro` (Google), `gemini-2.5-flash-lite` (Google), `gpt-4o-mini` (OpenAI), `gpt-image-1` (OpenAI).
+
+---
+
+## OmniAI Chat Completions
+
+Generate a model response for a conversation. OpenAI Chat Completions shape, routed to Claude, Gemini or GPT by the model field.
+
+| | |
+|---|---|
+| **Endpoint** | `POST https://api.ideamart.io/omniai/api/v1/chat/completions` |
+| **Environment variable** | `OMNIAI_CHAT_COMPLETIONS_URL` |
+| **Auth** | `Authorization: app_<keyId>.<keyValue>` from `OMNIAI_API_KEY` — header, not body, and no `Bearer` prefix |
+| **Content type** | `application/json` |
+| **Full guide** | [14-omni-ai.md](14-omni-ai.md) |
+
+> **This call spends real tokens** from your OmniAI balance, and it fails with real HTTP
+> status codes rather than an `S1000` envelope. Both rules are the opposite of every telco
+> endpoint above.
+
+### Request parameters
+
+| Parameter | Type | | Definition |
+|---|---|---|---|
+| `model` | enum | **Required** | Which model answers. Each has different capabilities, performance characteristics and price points, and a model your project is not configured for fails with INVALID_LLM_CONFIG. One of `claude-sonnet-4`, `gemini-2.5-pro`, `gemini-2.5-flash-lite`, `gpt-4o-mini`. |
+| `messages` | object[] | **Required** | The conversation so far, oldest first. Each entry has a role (system, developer, user, assistant or tool) and content, which is either a string or an array of typed parts — text, image and audio parts are supported. |
+| `temperature` | number | Optional | Sampling temperature between 0 and 2. Higher values like 0.8 will make the output more random; lower values make it more focused and deterministic. Defaults to 1. |
+| `max_completion_tokens` | integer | Optional | An upper bound for the number of tokens that can be generated. Set it on every call: it is the only hard ceiling on what one request can cost you. |
+| `tools` | object[] | Optional | A list of tools the model may call. The model replies with tool_calls instead of content, and you send the results back as messages with role tool. |
+| `response_format` | object | Optional | The format in which the model output should be returned, such as { "type": "text" } or a JSON schema. Use it instead of asking for JSON in the prompt and parsing hopefully. |
+| `service_tier` | string | Optional | Specifies the processing type used for serving the request. Defaults to auto. |
+| `frequency_penalty` | number | Optional | Between -2.0 and 2.0. Positive values penalise new tokens based on their existing frequency in the text so far, reducing verbatim repetition. Defaults to 0. |
+| `logprobs` | boolean | Optional | Whether to return log probabilities of the output tokens or not. Defaults to false. |
+| `n` | integer | Optional | How many chat completion choices to generate for each input message. Every choice is billed, so leave it at the default of 1 unless you genuinely use the alternatives. |
+| `presence_penalty` | number | Optional | Between -2.0 and 2.0. Positive values penalise new tokens based on whether they appear in the text so far, pushing the model towards new topics. Defaults to 0. |
+| `prompt_cache_key` | string | Optional | Groups requests that share a long identical prefix so the provider can cache it. Use a stable value per prompt template, never per user. |
+| `safety_identifier` | string | Optional | A stable identifier used to help detect users violating usage policies. Send a hash of your own user id — never an MSISDN and never a subscriberId. |
+| `stop` | string\|string[] | Optional | Up to 4 sequences where the API will stop generating further tokens. Defaults to null. |
+| `store` | boolean | Optional | Whether or not to store the output of this chat completion request. Defaults to false — leave it false for anything carrying subscriber data. |
+| `top_logprobs` | integer | Optional | The number of most likely tokens to return at each token position, 0 to 20. Requires logprobs to be true. |
+| `top_p` | number | Optional | An alternative to sampling with temperature, called nucleus sampling. Defaults to 1. Adjust this or temperature, not both. |
+
+### Request
+
+```bash
+curl -sS -X POST "$OMNIAI_CHAT_COMPLETIONS_URL" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: $OMNIAI_API_KEY" \
+  --max-time 120 \
+  -d @- <<'REQUEST'
+{
+  "model": "gpt-4o-mini",
+  "messages": [
+    {
+      "role": "system",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are a concise assistant for a Sri Lankan mobile service. Answer in one short paragraph."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Explain megapixels in a picture"
+        }
+      ]
+    }
+  ],
+  "max_completion_tokens": 300,
+  "response_format": {
+    "type": "text"
+  }
+}
+REQUEST
+```
+
+### Response
+
+HTTP 200 with the body below. Any other status is a failure — see the table after it.
+
+```json
+{
+  "id": "chatcmpl-B9MBs8CjcvOU2jLn4n570S5qMJKcT",
+  "object": "chat.completion",
+  "created": 1741569952,
+  "model": "gpt-4o-mini",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Megapixels count the millions of pixels a photo contains…",
+        "refusal": null,
+        "annotations": []
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 19,
+    "completion_tokens": 10,
+    "total_tokens": 29,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "service_tier": "default"
+}
+```
+
+### Response fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | string | Identifier for this completion. Log it — it is what OmniAI support traces a bad response by. |
+| `object` | string | Always chat.completion. |
+| `created` | integer | Unix timestamp of when the completion was created. |
+| `model` | string | The model that actually answered. Check it rather than assuming your requested model was used. |
+| `choices` | object[] | The generated alternatives, one per n. Each carries index, message, logprobs and finish_reason. |
+| `choices[].message` | object | The assistant turn: role, content, refusal, annotations, and tool_calls when the model asked for a tool. Append it to your message history verbatim before the next turn. |
+| `choices[].finish_reason` | string | Why generation stopped: stop is a complete answer, length means it hit max_completion_tokens and the content is truncated, tool_calls means the model wants a tool run. Branch on this — a truncated answer is not a failed request. |
+| `usage` | object | Token accounting for this call: prompt_tokens, completion_tokens and total_tokens, plus cached and reasoning breakdowns. This is what draws down your balance, so record total_tokens per call. |
+| `service_tier` | string | The processing tier that served the request. |
+
+### Errors for this endpoint
+
+| Code | HTTP | Class | Meaning and fix |
+|---|---|---|---|
+| `400` | 400 | client | Bad request — invalid request format or a malformed payload. Common causes are invalid JSON, missing required fields and invalid parameter values. → Read error.param: it names the offending field. Validate the payload before sending rather than after failing. |
+| `401` | 401 | configuration | Unauthorized. Your API key is either missing, invalid, or expired. → Send the key verbatim as Authorization: app_<keyId>.<keyValue>. Do not prepend Bearer, do not base64-encode it, and check the value actually reached the process rather than being an empty environment variable. |
+| `402` | 402 | configuration | Payment required — insufficient token balance. → Top up the balance in the OmniAI portal. Alert on this: it stops every AI call in the product, not one request. |
+| `403` | 403 | configuration | Forbidden — insufficient permissions, or the model you asked for is restricted for your project. → Check the project is ACTIVE and the model is enabled for it in the OmniAI portal. |
+| `404` | 404 | configuration | Not found — no project matches the API key you sent. → Verify the key is a complete keyId.keyValue pair and belongs to the project you think it does. A truncated key looks exactly like a wrong one. |
+| `429` | 429 | transient | Too many requests — rate limit exceeded, or the token quota is exhausted. Please wait before making additional requests. → Read the Retry-After header and back off exponentially with jitter. Check error.code: RATE_LIMIT_EXCEEDED clears on its own, TOKEN_QUOTA_EXCEEDED does not. |
+| `500` | 500 | transient | Internal server error — an unexpected error on the OmniAI side. Their team is automatically notified of server errors. → Retry with backoff, cap the attempts, then dead-letter and surface a degraded experience rather than hanging. |
+| `502` | 502 | transient | Bad gateway — OmniAI failed to forward the request to the upstream LLM provider, usually provider downtime or connectivity. → Retry with backoff, and consider failing over to another model: a 502 is usually one provider being down, not OmniAI. |
+| `503` | 503 | transient | Service unavailable — temporarily down for maintenance or under high load. → Retry with backoff. Check the provider status pages before escalating. |
+| `PROJECT_NOT_FOUND` | 404 | configuration | Project not found with API key. The provided API key doesn't match any existing project. → Regenerate the key in the OmniAI portal and confirm both halves of keyId.keyValue were copied. |
+| `PROJECT_INACTIVE` | 403 | configuration | Project is not active. The project exists but its status is not ACTIVE. → Activate the project in the OmniAI portal. No code change will help. |
+| `INVALID_LLM_CONFIG` | 400 | configuration | Invalid LLM model. The specified model is not configured or allowed for your project. → Use a model enabled for the project. This is the OmniAI equivalent of E1309 — provisioning, not payload. |
+| `RATE_LIMIT_EXCEEDED` | 429 | transient | Rate limit exceeded. Your project has exceeded the allowed number of requests per time period. → Back off and retry; limits reset every minute. Queue bursts rather than firing them in parallel. |
+| `TOKEN_QUOTA_EXCEEDED` | 429 | configuration | Token quota exceeded. Your project has used up its allocated token quota. → Retrying will not clear this. Raise the quota or top up in the portal, and alert rather than looping. |
+| `INSUFFICIENT_BALANCE` | 402 | configuration | Insufficient token balance. Your current balance is too low to process the request. → Top up in the OmniAI portal. Monitor the balance proactively so this never fires in production. |
+| `FORWARDING_FAILED` | 502 | transient | Failed to forward the request. The call to the upstream LLM provider failed due to connectivity or provider issues. → Retry with backoff, or fail over to a model from a different provider. |
+
+The body of a failure is `{ "error": { "message", "type", "param", "code" } }`. **Branch on `error.code`**, not on the message. Quota is enforced two ways — requests per minute and total token spend. They surface as different error codes (RATE_LIMIT_EXCEEDED and TOKEN_QUOTA_EXCEEDED) on the same 429, so read the code, not just the status.
+
+### Rules
+
+- Call it from your backend only. The key is a bearer-equivalent secret with a spendable balance behind it; a browser or mobile app that holds it can drain the balance.
+- Always set max_completion_tokens. Without it a single runaway request can spend an unbounded share of your token balance.
+- Branch on the HTTP status here, unlike every telco endpoint in this catalog. There is no statusCode field and no S1000.
+- Check finish_reason before using the content. length means the answer is cut off mid-sentence.
+- Never put a raw MSISDN, a subscriberId or an Ideamart password into a prompt, a safety_identifier or a prompt_cache_key. Prompts leave your trust boundary and reach a third-party model provider.
+- Retry only 429, 500, 502 and 503, with exponential backoff and jitter. A 400, 401, 402, 403 or 404 will fail identically forever.
+- Set an explicit client timeout well above your telco one — a large completion legitimately takes tens of seconds — and never make an LLM call inside a USSD callback's response path.
+- Treat model output as untrusted input: never execute it, never interpolate it into SQL or a shell, and never send it straight to a subscriber as an SMS without a length and content check.
+
+---
+
+## OmniAI Image Generation
+
+Create an image from a text prompt. GPT Image 1 only, and the image comes back as base64 in the response body rather than as a URL.
+
+| | |
+|---|---|
+| **Endpoint** | `POST https://api.ideamart.io/omniai/api/v1/images/generations` |
+| **Environment variable** | `OMNIAI_IMAGE_GENERATIONS_URL` |
+| **Auth** | `Authorization: app_<keyId>.<keyValue>` from `OMNIAI_API_KEY` — header, not body, and no `Bearer` prefix |
+| **Content type** | `application/json` |
+| **Full guide** | [14-omni-ai.md](14-omni-ai.md) |
+
+> **This call spends real tokens** from your OmniAI balance, and it fails with real HTTP
+> status codes rather than an `S1000` envelope. Both rules are the opposite of every telco
+> endpoint above.
+
+### Request parameters
+
+| Parameter | Type | | Definition |
+|---|---|---|---|
+| `prompt` | string | **Required** | A text description of the desired image(s). The maximum length is 32000 characters for GPT Image 1. |
+| `model` | string | Optional | The image model to use. gpt-image-1 is the only one available and the default. |
+| `background` | enum | Optional | Background treatment. transparent requires an output_format of png or webp — it is silently useless with jpeg. Defaults to auto. One of `transparent`, `opaque`, `auto`. |
+| `moderation` | enum | Optional | Content-moderation strictness for the generated image. Defaults to auto. One of `low`, `auto`. |
+| `n` | integer | Optional | How many images to generate, 1 to 10. Every image is billed separately. Defaults to 1. |
+| `output_compression` | integer | Optional | Compression level from 0 to 100 for the webp and jpeg output formats. Ignored for png. Defaults to 100. |
+| `output_format` | enum | Optional | The encoding of the returned image. Defaults to png. One of `png`, `jpeg`, `webp`. |
+| `quality` | enum | Optional | Rendering quality. This is the main cost and latency lever — low is dramatically cheaper and faster than high. Defaults to auto. One of `auto`, `high`, `medium`, `low`. |
+| `size` | enum | Optional | Dimensions of the generated image: square, landscape, portrait, or auto to let the model choose. Defaults to auto. One of `1024x1024`, `1536x1024`, `1024x1536`, `auto`. |
+| `partial_images` | integer | Optional | Number of partial images, 0 to 3, to emit while generating. Only meaningful with stream set to true. Defaults to 0. |
+| `stream` | boolean | Optional | Generate the image in streaming mode, emitting partial images as server-sent events. Defaults to false. |
+| `style` | enum | Optional | Rendering style — vivid is more dramatic and saturated, natural is more literal. Defaults to vivid. One of `vivid`, `natural`. |
+| `user` | string | Optional | A unique identifier representing your end-user, used for abuse monitoring. Send an opaque internal id, never an MSISDN. |
+
+### Request
+
+```bash
+curl -sS -X POST "$OMNIAI_IMAGE_GENERATIONS_URL" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: $OMNIAI_API_KEY" \
+  --max-time 120 \
+  -d @- <<'REQUEST'
+{
+  "prompt": "a red apple on a plain background",
+  "model": "gpt-image-1",
+  "n": 1,
+  "quality": "low",
+  "size": "1024x1024"
+}
+REQUEST
+```
+
+### Response
+
+HTTP 200 with the body below. Any other status is a failure — see the table after it.
+
+```json
+{
+  "created": 1767763326,
+  "background": "opaque",
+  "data": [
+    {
+      "b64_json": "<base64-encoded image bytes>"
+    }
+  ],
+  "output_format": "png",
+  "quality": "low",
+  "size": "1024x1024",
+  "usage": {
+    "input_tokens": 9,
+    "input_tokens_details": {
+      "image_tokens": 0,
+      "text_tokens": 9
+    },
+    "output_tokens": 272,
+    "total_tokens": 281
+  }
+}
+```
+
+### Response fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `created` | integer | Unix timestamp of when the image was created. |
+| `data` | object[] | One entry per generated image. Each carries b64_json — the image bytes, base64-encoded. GPT Image 1 always returns base64, never a URL, so decode and store it yourself. |
+| `background` | string | The background treatment actually applied. |
+| `output_format` | string | The encoding of the returned bytes — use it to pick the file extension and the Content-Type when you store or serve the image. |
+| `quality` | string | The quality level actually used, which is the resolved value when you sent auto. |
+| `size` | string | The dimensions actually produced, which is the resolved value when you sent auto. |
+| `usage` | object | Token accounting: input_tokens with a text/image breakdown, output_tokens and total_tokens. Image output tokens dwarf the prompt, so quality and n drive the cost, not prompt length. |
+
+### Errors for this endpoint
+
+| Code | HTTP | Class | Meaning and fix |
+|---|---|---|---|
+| `400` | 400 | client | Bad request — invalid request format or a malformed payload. Common causes are invalid JSON, missing required fields and invalid parameter values. → Read error.param: it names the offending field. Validate the payload before sending rather than after failing. |
+| `401` | 401 | configuration | Unauthorized. Your API key is either missing, invalid, or expired. → Send the key verbatim as Authorization: app_<keyId>.<keyValue>. Do not prepend Bearer, do not base64-encode it, and check the value actually reached the process rather than being an empty environment variable. |
+| `402` | 402 | configuration | Payment required — insufficient token balance. → Top up the balance in the OmniAI portal. Alert on this: it stops every AI call in the product, not one request. |
+| `403` | 403 | configuration | Forbidden — insufficient permissions, or the model you asked for is restricted for your project. → Check the project is ACTIVE and the model is enabled for it in the OmniAI portal. |
+| `404` | 404 | configuration | Not found — no project matches the API key you sent. → Verify the key is a complete keyId.keyValue pair and belongs to the project you think it does. A truncated key looks exactly like a wrong one. |
+| `429` | 429 | transient | Too many requests — rate limit exceeded, or the token quota is exhausted. Please wait before making additional requests. → Read the Retry-After header and back off exponentially with jitter. Check error.code: RATE_LIMIT_EXCEEDED clears on its own, TOKEN_QUOTA_EXCEEDED does not. |
+| `500` | 500 | transient | Internal server error — an unexpected error on the OmniAI side. Their team is automatically notified of server errors. → Retry with backoff, cap the attempts, then dead-letter and surface a degraded experience rather than hanging. |
+| `502` | 502 | transient | Bad gateway — OmniAI failed to forward the request to the upstream LLM provider, usually provider downtime or connectivity. → Retry with backoff, and consider failing over to another model: a 502 is usually one provider being down, not OmniAI. |
+| `503` | 503 | transient | Service unavailable — temporarily down for maintenance or under high load. → Retry with backoff. Check the provider status pages before escalating. |
+| `PROJECT_NOT_FOUND` | 404 | configuration | Project not found with API key. The provided API key doesn't match any existing project. → Regenerate the key in the OmniAI portal and confirm both halves of keyId.keyValue were copied. |
+| `PROJECT_INACTIVE` | 403 | configuration | Project is not active. The project exists but its status is not ACTIVE. → Activate the project in the OmniAI portal. No code change will help. |
+| `RATE_LIMIT_EXCEEDED` | 429 | transient | Rate limit exceeded. Your project has exceeded the allowed number of requests per time period. → Back off and retry; limits reset every minute. Queue bursts rather than firing them in parallel. |
+| `TOKEN_QUOTA_EXCEEDED` | 429 | configuration | Token quota exceeded. Your project has used up its allocated token quota. → Retrying will not clear this. Raise the quota or top up in the portal, and alert rather than looping. |
+| `INSUFFICIENT_BALANCE` | 402 | configuration | Insufficient token balance. Your current balance is too low to process the request. → Top up in the OmniAI portal. Monitor the balance proactively so this never fires in production. |
+| `FORWARDING_FAILED` | 502 | transient | Failed to forward the request. The call to the upstream LLM provider failed due to connectivity or provider issues. → Retry with backoff, or fail over to a model from a different provider. |
+
+The body of a failure is `{ "error": { "message", "type", "param", "code" } }`. **Branch on `error.code`**, not on the message. Quota is enforced two ways — requests per minute and total token spend. They surface as different error codes (RATE_LIMIT_EXCEEDED and TOKEN_QUOTA_EXCEEDED) on the same 429, so read the code, not just the status.
+
+### Rules
+
+- The response is base64, not a URL. Never log the body, never store it in a database text column, and never return it through a JSON API — decode it once and put the bytes in object storage.
+- Generation is slow. Do it in a background job and hand the user a job id, never inside a request the user is waiting on and never inside a callback handler.
+- quality and n set the price. Default to low for previews and thumbnails, and only spend high where the image is the product.
+- Cache by a hash of the resolved prompt plus every parameter. The same prompt costs the same again every time you ask.
+- transparent backgrounds need output_format png or webp; with jpeg the setting is quietly discarded.
+- Never send subscriber-identifying text in a prompt or in user.
 
 ---
 

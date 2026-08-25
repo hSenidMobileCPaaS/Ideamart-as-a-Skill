@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://github.com/hSenidMobileCPaaS/Ideamart-as-a-Skill/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/hSenidMobileCPaaS/Ideamart-as-a-Skill/ci.yml?branch=main&style=flat-square&label=CI&color=E11D74" alt="CI status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-proprietary-E11D74?style=flat-square" alt="Proprietary licence"></a>
-  <img src="https://img.shields.io/badge/endpoints-14-E11D74?style=flat-square" alt="14 endpoints">
+  <img src="https://img.shields.io/badge/endpoints-16-E11D74?style=flat-square" alt="16 endpoints">
   <img src="https://img.shields.io/badge/callbacks-5-E11D74?style=flat-square" alt="5 callbacks">
   <img src="https://img.shields.io/badge/status%20codes-80%2B-E11D74?style=flat-square" alt="80+ status codes">
   <img src="https://img.shields.io/badge/works%20with-20%2B%20agents-E11D74?style=flat-square" alt="Works with 20+ agents">
@@ -23,8 +23,9 @@
 </p>
 
 <p align="center">
-  <strong>SMS · USSD · Subscription · OTP · CaaS charging · LBS</strong><br>
-  <sub>Dialog Axiata's Sri Lankan telco platform — operators Dialog, Hutch (072/078) and Airtel.</sub>
+  <strong>SMS · USSD · Subscription · OTP · CaaS charging · LBS · OmniAI</strong><br>
+  <sub>Dialog Axiata's Sri Lankan telco platform — operators Dialog, Hutch (072/078) and Airtel —<br>
+  and OmniAI, its AI gateway for chat completions and image generation.</sub>
 </p>
 
 ---
@@ -41,13 +42,21 @@ This repo gives it the contract: every endpoint, every parameter, every response
 status code, all five callbacks, and the handful of rules that separate a working integration
 from a suspended one.
 
+**Including [OmniAI](references/14-omni-ai.md), Ideamart's AI gateway** — chat completions across
+Claude, Gemini and GPT models, and image generation, billed from an Ideamart token balance. It
+shares the brand and the host with the telco APIs and almost nothing else: a header credential
+instead of body credentials, real HTTP status codes instead of the `S1000` envelope, no
+subscriber and no callbacks. An agent that carries the telco habits across writes a client that
+reports every good answer as a failure, so the skill documents the two as the separate products
+they are.
+
 **In whatever language you already use.** Ideamart is JSON over HTTPS, so nothing here is tied
 to one runtime:
 
 - [**Every endpoint as a runnable curl**](references/13-curl-reference.md) — the request, every
   parameter defined, the response, every response field explained, and the same for all five
-  callbacks. Translate it into the HTTP client you already use and you have the call. No SDK, no
-  generated code, no language second-class.
+  callbacks and both OmniAI endpoints. Translate it into the HTTP client you already use and you
+  have the call. No SDK, no generated code, no language second-class.
 - [**references/11-any-stack.md**](references/11-any-stack.md) specifies the integration around
   the calls language-neutrally — seven components, per-language notes, and an acceptance
   checklist — for Ruby, Rust, Kotlin, Elixir or anything else.
@@ -200,6 +209,7 @@ Return the number of subscribers currently registered to the application.
 | `checklist` | Am I ready for production? |
 | `reference <doc>` | Show me the full guide. |
 | `platform` | Base URLs, operators, conventions. |
+| `omniai [models\|errors]` | How do I call the AI gateway, which model do I want, and what can go wrong? |
 
 Add `--json` to any command for machine-readable output. Agents that cannot run commands — or
 machines without Node — read the catalog JSON directly; same data, and `jq` or a one-line
@@ -220,9 +230,9 @@ $ node tools/ideamart.mjs validate sms-send '{"message":"hi","destinationAddress
 ### Every endpoint as curl — the path for any language
 
 No SDK, no code generation, no Node: [references/13-curl-reference.md](references/13-curl-reference.md)
-writes out all 11 endpoints and all 5 callbacks at the wire — the request, every parameter
-defined, the response, every response field explained, and the status codes that endpoint can
-return.
+writes out all 11 telco endpoints, all 5 callbacks and both OmniAI endpoints at the wire — the
+request, every parameter defined, the response, every response field explained, and the status
+codes that endpoint can return.
 
 ```bash
 curl -sS -X POST "$IDEAMART_CAAS_DEBIT_URL" \
@@ -301,6 +311,19 @@ An unset endpoint is meaningful: the client refuses the call locally, so you get
 naming the missing variable instead of `E1309` from the platform after a round trip. Pointing
 one at a mock is the whole local-development switch.
 
+OmniAI is configured the same way but separately, because it is a separate product with a
+separate key and a separate balance:
+
+```bash
+OMNIAI_API_KEY=replace-me          # from omniai.ideamart.io — NOT your Ideamart password
+#OMNIAI_CHAT_COMPLETIONS_URL=https://api.ideamart.io/omniai/api/v1/chat/completions
+#OMNIAI_IMAGE_GENERATIONS_URL=https://api.ideamart.io/omniai/api/v1/images/generations
+```
+
+That key travels in an `Authorization` header rather than the JSON body, spends a prepaid token
+balance, and — unlike every telco endpoint — is **not** IP-whitelisted, so a leak works from
+anywhere in the world until you rotate it.
+
 Timeouts, encodings and retry policy are **not** configuration — they are constants in the
 client, because they are properties of the protocol rather than of your deployment.
 
@@ -326,6 +349,7 @@ deployment story.
 | **CaaS** | Direct debit, query balance, charging notifications, reconciliation |
 | **LBS** | Get location, QoS precedence rules, privacy handling |
 | **IVR** | Not publicly documented — documented as such, with an extension pattern |
+| **OmniAI** | Chat completions on `claude-sonnet-4`, `gemini-2.5-pro`, `gemini-2.5-flash-lite` and `gpt-4o-mini`; image generation on `gpt-image-1`; the full error table; and the rules for putting a model call inside a telco flow |
 
 ### Languages
 
@@ -352,6 +376,7 @@ practices that keep an application approved.
 | `ideamart-review` | Auditing existing code |
 | `ideamart-debug` | A failing call or callback |
 | `ideamart-golive` | The pre-production checklist |
+| `ideamart-omniai` | The OmniAI AI gateway — chat completions and image generation |
 | `ideamart-help` | Quick reference |
 
 On plugin-tier hosts these are also slash commands: `/ideamart`, `/ideamart-review`, and so on.
@@ -360,7 +385,7 @@ On plugin-tier hosts these are also slash commands: `/ideamart`, `/ideamart-revi
 
 ## What it actually changes
 
-Nine mistakes agents make on this platform, and what each one costs:
+Thirteen mistakes agents make on this platform, and what each one costs:
 
 | Mistake | Consequence |
 |---|---|
@@ -373,6 +398,10 @@ Nine mistakes agents make on this platform, and what each one costs:
 | USSD sessions in an in-process map, whatever the language | Works in dev, breaks the moment you scale. |
 | Work before acknowledging a callback | Sessions time out; duplicates pile up. |
 | TLS verification switched off (`rejectUnauthorized: false`, `verify=False`, `InsecureSkipVerify`, …) | Your credentials become interceptable. |
+| An OmniAI key sent as `Bearer …`, or in the JSON body | Every AI call returns `401`. It goes in the header verbatim. |
+| One HTTP client shared between the telco APIs and OmniAI | It applies one convention and is wrong for half the calls — good answers reported as failures, or real failures reported as successes. |
+| An MSISDN or `subscriberId` interpolated into a prompt | Subscriber identity sent to a third-party model provider, unrecoverably. |
+| An AI call with no `max_completion_tokens`, or made inside a callback | One loop empties the prepaid balance; a USSD session dies waiting for the answer. |
 
 ---
 
@@ -410,12 +439,12 @@ A-to-Z route for each is [references/12-implementation-playbook.md](references/1
 SKILL.md · AGENTS.md              Entry points (Claude Code / everyone else)
 catalog/ideamart-api.json         The whole contract as structured data
 tools/ideamart.mjs                Offline CLI over the catalog
-references/                       13 guides: per-service, callbacks, codes, security, go-live,
-                                  the language-neutral spec, the A-to-Z playbook, and every
-                                  endpoint as curl with its definitions
+references/                       14 guides: per-service, callbacks, codes, security, go-live,
+                                  the language-neutral spec, the A-to-Z playbook, the OmniAI
+                                  gateway, and every endpoint as curl with its definitions
 templates/                        .env.example + working config, client and callback handlers
                                   in TypeScript/Node, Python, Java, Go, PHP and C#
-skills/ · commands/               7 task skills and their slash commands
+skills/ · commands/               8 task skills and their slash commands
 scripts/                          Smoke tests (bash + PowerShell), callback tests, rule sync,
                                   curl-reference build
 docs/agent-support.md             Which agent reads which file
@@ -446,13 +475,13 @@ contribution — cite the docs page or paste the observed response.
 ## Sources
 
 Everything derives from the official documentation at
-[docs.ideamart.io](https://docs.ideamart.io) — SMS, USSD, Subscription, OTP, Charging, LBS and
-Response Codes — plus the IdeaPro provisioning guides, reconciled field by field against calls
-verified working on a live application.
+[docs.ideamart.io](https://docs.ideamart.io) — SMS, USSD, Subscription, OTP, Charging, LBS,
+Response Codes and [OMNI AI](https://docs.ideamart.io/omni-ai/) — plus the IdeaPro provisioning
+guides, reconciled field by field against calls verified working on a live application.
 
 Where the two differ, the catalog records the call that works, so the skill gives one answer
-rather than a caveat. That answer is the one the generator emits, the one `validate` checks
-against, and the one the reference documents describe.
+rather than a caveat. That answer is the one `curl` prints, the one `validate` checks against,
+and the one the reference documents describe.
 
 Ideamart evolves. Confirm with support what your application is actually provisioned for before
 go-live, and open an issue if the platform's behaviour moves.

@@ -1,6 +1,6 @@
 ---
 name: ideamart
-description: Build and integrate Ideamart (Dialog Axiata's Sri Lankan telco platform) services — SMS, USSD, Subscription (register, unregister, status, query base size), OTP, CaaS charging (direct debit, balance query), and LBS. Use whenever the user mentions Ideamart, IdeaPro, api.ideamart.io, MSISDN/`tel:` addressing, shortcode/keyword, USSD menus, subscriber base size, direct carrier billing, mobile-account charging, or telco SMS/USSD in Sri Lanka.
+description: Build and integrate Ideamart (Dialog Axiata's Sri Lankan telco platform) services — SMS, USSD, Subscription (register, unregister, status, query base size), OTP, CaaS charging (direct debit, balance query), and LBS — plus OmniAI, the Ideamart AI gateway. Use whenever the user mentions Ideamart, IdeaPro, api.ideamart.io, MSISDN/`tel:` addressing, shortcode/keyword, USSD menus, subscriber base size, direct carrier billing, mobile-account charging, telco SMS/USSD in Sri Lanka, or OmniAI/omniai.ideamart.io.
 ---
 
 # Ideamart
@@ -8,6 +8,11 @@ description: Build and integrate Ideamart (Dialog Axiata's Sri Lankan telco plat
 Ideamart is Dialog Axiata's telco platform for Sri Lanka (operators Dialog, Hutch 072/078,
 Airtel). It exposes SMS, USSD, subscription lifecycle, mobile-account charging and location
 as JSON-over-HTTPS APIs.
+
+It also runs **OmniAI**, an AI gateway (chat completions on Claude, Gemini and GPT models, plus
+image generation). It shares the host and nothing else — header credentials, real HTTP status
+codes, no subscriber, no callbacks. For anything AI-shaped go to the `ideamart-omniai` skill or
+`references/14-omni-ai.md`, and do **not** apply the rules below to it.
 
 ## Do this first — do not recall parameter names, query them
 
@@ -17,6 +22,7 @@ node tools/ideamart.mjs show <id>                     # exact contract
 node tools/ideamart.mjs curl <id> [key=value ...]     # runnable request + param/response defs
 node tools/ideamart.mjs validate <id> '<json>'
 node tools/ideamart.mjs code <statusCode>
+node tools/ideamart.mjs omniai                        # the AI gateway, which follows none of this
 ```
 
 **`references/13-curl-reference.md` is where every call comes from** — every endpoint as a
@@ -63,7 +69,7 @@ language-neutrally, with an acceptance checklist for stacks with no template.
 
 ## Where the detail lives
 
-`references/01-getting-started.md` through `13-curl-reference.md`, and the per-language
+`references/01-getting-started.md` through `14-omni-ai.md`, and the per-language
 implementations in `templates/`. Read the reference for the service you are building before
 writing code.
 
@@ -71,4 +77,4 @@ Taking a project from nothing to production — or adding Ideamart to an app tha
 users — is `references/12-implementation-playbook.md`.
 
 Related skills: `ideamart-scaffold`, `ideamart-callbacks`, `ideamart-review`,
-`ideamart-debug`, `ideamart-golive`.
+`ideamart-debug`, `ideamart-golive`, `ideamart-omniai`.

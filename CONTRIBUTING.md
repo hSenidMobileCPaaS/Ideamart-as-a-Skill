@@ -58,6 +58,16 @@ implementation now, in every language equally. If a request for "a Kotlin client
 answer is a correct contract plus the seven components in `references/11-any-stack.md`, not a
 seventh emitter.
 
+**OmniAI lives in its own catalog branch** (`catalog.omniai`), not in `catalog.services`, and
+that separation is load-bearing. It authenticates with a header rather than body credentials,
+returns real HTTP status codes rather than the `S1000` envelope, has no subscriber and no
+callbacks — so the telco invariants the tests enforce (`applicationId` and `password` required,
+`tel:` addressing, `statusCode` branching) are wrong for it. Appending an OmniAI endpoint to
+`catalog.services` to "keep them together" would make every one of those invariants either fail
+or, worse, silently apply. Its errors are in `catalog.omniai.errors`, keyed by HTTP status and
+by the code that arrives in `error.code`; `lookupOmniError` reads them, and it deliberately will
+not resolve a telco `E13xx`.
+
 Where the official documentation and a verified working call disagree, the catalog records the
 call that works, with no caveat in the text. The skill gives one answer; a hedge in a parameter
 description is a bug.

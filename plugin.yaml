@@ -10,6 +10,7 @@ provides_skills:
   - ideamart-callbacks
   - ideamart-debug
   - ideamart-golive
+  - ideamart-omniai
   - ideamart-help
 provides_commands:
   - ideamart
@@ -18,4 +19,5 @@ provides_commands:
   - ideamart-callbacks
   - ideamart-debug
   - ideamart-golive
+  - ideamart-omniai
   - ideamart-help

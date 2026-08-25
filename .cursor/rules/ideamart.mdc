@@ -1,5 +1,5 @@
 ---
-description: Ideamart telco integration (SMS, USSD, Subscription, OTP, CaaS, LBS) — Dialog Axiata, Sri Lanka
+description: Ideamart integration (SMS, USSD, Subscription, OTP, CaaS, LBS) and OmniAI, its AI gateway — Dialog Axiata, Sri Lanka
 globs:
 alwaysApply: false
 ---
@@ -15,9 +15,15 @@ Ideamart is Dialog Axiata's telco platform for **Sri Lanka**, covering the opera
 Hutch (072 and 078) and Airtel. It exposes SMS, USSD, subscription management, mobile-account
 charging and location as JSON-over-HTTPS APIs.
 
+Ideamart also runs **OmniAI**, an AI gateway: one OpenAI-shaped API in front of Claude, Gemini
+and GPT models, plus image generation, billed from an Ideamart token balance. It shares the
+brand and the host and almost nothing else, so it has its own section at the end of this file
+and its own reference, [references/14-omni-ai.md](references/14-omni-ai.md). **Do not apply the
+telco rules below to an OmniAI call, or the OmniAI rules to a telco one.**
+
 **Apply these instructions whenever the work involves Ideamart, IdeaPro, `api.ideamart.io`,
 `tel:` MSISDN addressing, USSD menus, shortcode/keyword routing, subscriber base size,
-direct carrier billing, or telco SMS in Sri Lanka.**
+direct carrier billing, telco SMS in Sri Lanka, or OmniAI / `omniai.ideamart.io`.**
 
 The platform is JSON over HTTPS, so **any language builds a complete integration** — write it
 in whatever the host project already uses. Every endpoint is written out as a runnable curl,
@@ -45,6 +51,9 @@ for TypeScript/Node, Python, Java, Go, PHP and C# as worked examples.
    opaque hash. Store and send back exactly what you received.
 5. **Always make charging idempotent.** One `externalTrxId` per logical charge, persisted
    *before* the call. Never retry with a fresh one — that double-charges a real person.
+6. **Never let subscriber identity reach an OmniAI prompt**, and cap every AI call with
+   `max_completion_tokens`. Prompts leave your trust boundary and reach a third-party model
+   provider, and an uncapped loop empties a shared prepaid balance.
 
 ---
 
@@ -67,6 +76,7 @@ node tools/ideamart.mjs practices [severity]         # security and reliability 
 node tools/ideamart.mjs checklist                    # go-live checklist
 node tools/ideamart.mjs reference <doc>              # print a reference document
 node tools/ideamart.mjs platform                     # base URLs, operators, conventions
+node tools/ideamart.mjs omniai [models|errors]       # the OmniAI gateway: auth, models, errors
 ```
 
 Add `--json` to any command for machine-readable output. If you cannot run commands — or Node
@@ -118,6 +128,7 @@ to read — never a reason to add one of those runtimes to a project.
 | Building in a stack with no template | [references/11-any-stack.md](references/11-any-stack.md) |
 | Taking a project from nothing to production, or adding Ideamart to an existing app | [references/12-implementation-playbook.md](references/12-implementation-playbook.md) |
 | **Every endpoint as curl** — request, parameter definitions, response, response fields | [references/13-curl-reference.md](references/13-curl-reference.md) |
+| **OmniAI** — the AI gateway: auth, models, chat completions, image generation, errors | [references/14-omni-ai.md](references/14-omni-ai.md) |
 
 Working reference implementations in [templates/](templates/README.md) for TypeScript/Node,
 Python, Java, Go, PHP and C#. Read the one matching the project's stack for shape rather than
@@ -154,6 +165,8 @@ platform. See [templates/.env.example](templates/.env.example).
 | Charging notification | *your callback URL* |
 | Locate a subscriber | `POST https://api.dialog.lk/lbs/locate` |
 | IVR / voice | Not publicly documented — do not invent endpoints |
+| **Ask a model / generate text** | `POST https://api.ideamart.io/omniai/api/v1/chat/completions` |
+| **Generate an image** | `POST https://api.ideamart.io/omniai/api/v1/images/generations` |
 
 Each of these as a runnable request, with every parameter and response field defined:
 [references/13-curl-reference.md](references/13-curl-reference.md).
@@ -213,6 +226,15 @@ Normalise in one helper. Never concatenate `tel:` inline.
 - ❌ Standing up a Node sidecar (or any second runtime) to call Ideamart from a non-JS project.
 - ❌ Logging `password`, the OTP, `referenceNo`, or an unmasked `subscriberId`.
 - ❌ Inventing IVR endpoints — there is no public specification.
+- ❌ Sending an OmniAI key as `Bearer …`, or sending it in the JSON body — it goes in the
+  `Authorization` header **verbatim**, `app_<keyId>.<keyValue>`.
+- ❌ Looking for `statusCode` in an OmniAI response, or reusing the telco client for it — OmniAI
+  returns real HTTP status codes and no `S1000`. Keep two clients.
+- ❌ Interpolating an MSISDN or a `subscriberId` into a prompt — that sends subscriber identity
+  to a third-party model provider.
+- ❌ Using a model response without checking `finish_reason` — `length` means it is cut off.
+- ❌ Retrying `TOKEN_QUOTA_EXCEEDED` — it is a `429` that will never clear. Alert instead.
+- ❌ Calling a model inside a callback's response path — the session dies before it answers.
 
 ---
 
@@ -231,3 +253,57 @@ Normalise in one helper. Never concatenate `tel:` inline.
 - Use a decimal type for money — `BigDecimal`, `decimal.Decimal`, `decimal`, `bcmath`, a
   decimal library, or integer minor units. Never a binary float.
 - Match the host project's existing stack, structure and conventions.
+
+---
+
+## OmniAI — the AI gateway
+
+`https://api.ideamart.io/omniai/api` · portal <https://omniai.ideamart.io> · full contract
+[references/14-omni-ai.md](references/14-omni-ai.md) · `node tools/ideamart.mjs omniai`
+
+**Everything above is inverted here.** Read this table before writing a line of AI code:
+
+| | Telco APIs | OmniAI |
+|---|---|---|
+| Credential | `applicationId` + `password` in the **body** | one key in the `Authorization` **header** |
+| Key source | IdeaPro provisioning | the OmniAI portal — a **different** key |
+| Failures | HTTP 200 always; branch on `statusCode` | real HTTP status codes; branch on the status, then `error.code` |
+| Success | `statusCode: "S1000"` | HTTP 2xx. There is no `statusCode` field |
+| Subject | a subscriber, `tel:947…` | no subscriber, no MSISDN, no operator |
+| Inbound | five callbacks you host | none. OmniAI never calls you |
+| Timeout | 15s | 60–120s |
+| Not-provisioned error | `E1309` | `INVALID_LLM_CONFIG` |
+
+**Keep two clients.** One shared HTTP helper applies exactly one of these conventions and is
+wrong for half the calls.
+
+**Auth:** `Authorization: app_<keyId>.<keyValue>` — verbatim, including `app_`. Not an OAuth
+bearer token: no `Bearer` prefix, no base64. From `OMNIAI_API_KEY`, backend only. It spends a
+prepaid balance and is **not** IP-whitelisted, so a leak works from anywhere until you rotate it.
+
+| Endpoint | Purpose | Variable |
+|---|---|---|
+| `POST /omniai/api/v1/chat/completions` | chat, on `claude-sonnet-4`, `gemini-2.5-pro`, `gemini-2.5-flash-lite`, `gpt-4o-mini` | `OMNIAI_CHAT_COMPLETIONS_URL` |
+| `POST /omniai/api/v1/images/generations` | images, on `gpt-image-1` | `OMNIAI_IMAGE_GENERATIONS_URL` |
+
+**When you generate OmniAI code, always:**
+
+- Set `max_completion_tokens` on every chat call and keep `n` at 1 — it is the only ceiling on
+  what one request can cost.
+- Check `choices[0].finish_reason` before using the content: `length` means it is truncated.
+- Branch on `error.code`. The two `429`s differ — `RATE_LIMIT_EXCEEDED` clears within the
+  minute, `TOKEN_QUOTA_EXCEEDED` never will.
+- Retry `429`+`RATE_LIMIT_EXCEEDED` (honour `Retry-After`), `500`, `502`, `503` and transport
+  errors, capped with jitter. Never retry `400`/`401`/`403`/`404`/`402`. There is no idempotency
+  key, so a timed-out call may already have been billed: cap at two attempts.
+- Redact before the prompt: no MSISDN, no `subscriberId` (a masked hash is still an identifier),
+  no OTP, no credential — not in `messages`, `prompt`, `user`, `safety_identifier` or
+  `prompt_cache_key`. Keep `store` false.
+- Never call a model inside a callback's response path. Acknowledge with `S1000` first, generate
+  out of band, deliver by MT SMS or on the next USSD screen.
+- Treat model output as untrusted input: never execute it, never interpolate it into SQL or a
+  shell, and length-check it before it becomes an SMS (160 GSM-7 characters per part, 70 for
+  Sinhala or Tamil — every part is billed).
+- Decode generated images to object storage. The response is base64, never a URL: do not log it
+  and do not store it as text.
+- Keep model ids in configuration, so a cheaper model can be swapped in without a deploy.

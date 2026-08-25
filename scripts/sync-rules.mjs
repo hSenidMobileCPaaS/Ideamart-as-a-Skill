@@ -35,7 +35,7 @@ const CURSOR = {
   path: ".cursor/rules/ideamart.mdc",
   frontmatter: [
     "---",
-    "description: Ideamart telco integration (SMS, USSD, Subscription, OTP, CaaS, LBS) — Dialog Axiata, Sri Lanka",
+    "description: Ideamart integration (SMS, USSD, Subscription, OTP, CaaS, LBS) and OmniAI, its AI gateway — Dialog Axiata, Sri Lanka",
     "globs:",
     "alwaysApply: false",
     "---",

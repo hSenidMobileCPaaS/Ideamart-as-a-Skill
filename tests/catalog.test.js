@@ -10,7 +10,10 @@ import {
   catalog,
   diagnose,
   findEntry,
+  isOmniai,
+  lookupOmniError,
   lookupStatusCode,
+  omniaiServices,
   repoRoot,
   search,
   toCurl,
@@ -40,7 +43,12 @@ test("every service has a unique id, path, parameters and a sample", () => {
   }
 });
 
-test("every outbound service requires applicationId and password", () => {
+/**
+ * catalog.services is the telco half only. OmniAI carries no body credentials
+ * at all — its key is a header — which is exactly why it lives in its own
+ * catalog branch rather than being appended here.
+ */
+test("every outbound telco service requires applicationId and password", () => {
   for (const s of catalog.services) {
     const names = s.parameters.map((p) => p.name);
     assert.ok(names.includes("applicationId"), `${s.id} missing applicationId`);
@@ -137,6 +145,214 @@ test("no real credential-shaped string appears in the catalog", () => {
   const raw = readFileSync(join(repoRoot, "catalog", "ideamart-api.json"), "utf8");
   const hexSecret = /"password"\s*:\s*"[0-9a-f]{16,}"/i;
   assert.equal(hexSecret.test(raw), false, "catalog contains a credential-shaped password value");
+});
+
+/* ── OmniAI ──────────────────────────────────────────────────────────────── */
+
+/**
+ * OmniAI shares the brand and the host and nothing else: header credentials,
+ * real HTTP status codes, no subscriber, no callbacks. Every test here guards a
+ * place where a telco assumption leaking into the AI path would produce a
+ * request that fails quietly or, worse, sends the wrong product's secret.
+ */
+test("the OmniAI branch declares a header credential, not body credentials", () => {
+  const auth = catalog.omniai.auth;
+  assert.equal(auth.type, "header");
+  assert.equal(auth.header, "Authorization");
+  assert.equal(auth.envVar, "OMNIAI_API_KEY");
+  assert.match(auth.format, /^app_/);
+  // The one mistake the published docs single out.
+  assert.match(auth.note, /not an OAuth bearer token/i);
+});
+
+test("every OmniAI service is fully specified and tagged as its own family", () => {
+  const services = omniaiServices();
+  assert.ok(services.length >= 2, "expected at least chat and image endpoints");
+  const ids = new Set();
+  for (const s of services) {
+    assert.ok(!ids.has(s.id), `duplicate OmniAI service id ${s.id}`);
+    ids.add(s.id);
+    assert.ok(isOmniai(s), `${s.id} is not tagged family: "omniai"`);
+    assert.equal(s.method, "POST");
+    assert.ok(s.absoluteUrl?.startsWith(catalog.omniai.baseUrl), `${s.id} is not on the OmniAI host`);
+    assert.ok(s.envVar?.startsWith("OMNIAI_"), `${s.id} must not share the IDEAMART_ prefix`);
+    assert.ok(s.parameters?.length, `${s.id} has no parameters`);
+    assert.ok(s.sampleRequest && s.sampleResponse, `${s.id} has no sample`);
+    assert.ok(s.errorCodes?.length, `${s.id} documents no failures`);
+
+    const names = s.parameters.map((p) => p.name);
+    for (const forbidden of ["applicationId", "password"]) {
+      assert.ok(!names.includes(forbidden), `${s.id} must not take ${forbidden} in the body`);
+    }
+  }
+});
+
+test("every OmniAI error code resolves with a known handling class", () => {
+  const classes = new Set(Object.keys(catalog.statusCodeClasses));
+  for (const s of omniaiServices()) {
+    for (const code of s.errorCodes) {
+      const info = lookupOmniError(code);
+      assert.equal(info.known, true, `${s.id} references unknown OmniAI error ${code}`);
+      assert.ok(classes.has(info.class), `${code} has unknown class "${info.class}"`);
+      assert.ok(info.http >= 400, `${code} has no HTTP status`);
+      assert.ok(info.action, `${code} has no fix`);
+    }
+  }
+});
+
+test("the two 429s are classified differently, because only one clears on its own", () => {
+  assert.equal(lookupOmniError("RATE_LIMIT_EXCEEDED").retry, true);
+  assert.equal(lookupOmniError("TOKEN_QUOTA_EXCEEDED").retry, false);
+  assert.equal(lookupOmniError("TOKEN_QUOTA_EXCEEDED").class, "configuration");
+});
+
+test("an OmniAI code and a telco code never resolve against each other's table", () => {
+  assert.equal(lookupOmniError("E1303").known, false);
+  assert.equal(lookupStatusCode("TOKEN_QUOTA_EXCEEDED").known, false);
+});
+
+test("OmniAI services resolve by id and by intent", () => {
+  assert.equal(findEntry("omniai-chat-completions").id, "omniai-chat-completions");
+  assert.equal(findEntry("chat").id, "omniai-chat-completions");
+  assert.ok(search("image generation").some((r) => r.id === "omniai-image-generation"));
+  assert.ok(search("claude").some((r) => r.id === "claude-sonnet-4"));
+});
+
+test("an OmniAI request carries no body credential and an Authorization header", () => {
+  const chat = findEntry("omniai-chat-completions");
+  const payload = buildPayload(chat, {});
+  assert.equal(payload.applicationId, undefined, "the telco appId leaked into an OmniAI body");
+  assert.equal(payload.password, undefined, "the telco password leaked into an OmniAI body");
+
+  const curl = toCurl(chat, payload);
+  assert.match(curl, /--header "Authorization: \$OMNIAI_API_KEY"/);
+  assert.doesNotMatch(curl, /IDEAMART_PASSWORD/);
+  // Quoted heredoc: nothing in a prompt should be expanded by the shell.
+  assert.match(curl, /--data @- <<'REQUEST'/);
+});
+
+test("OmniAI validation catches an unavailable model and a malformed conversation", () => {
+  const chat = findEntry("omniai-chat-completions");
+
+  const badModel = validatePayload(chat, { model: "gpt-5-turbo", messages: [{ role: "user", content: "hi" }] });
+  assert.equal(badModel.valid, false);
+  assert.ok(badModel.errors.some((e) => e.includes("must be one of")));
+
+  const badRole = validatePayload(chat, { model: "gpt-4o-mini", messages: [{ role: "human", content: "hi" }] });
+  assert.equal(badRole.valid, false);
+  assert.ok(badRole.errors.some((e) => e.includes("role")));
+
+  const noToolId = validatePayload(chat, {
+    model: "gpt-4o-mini",
+    messages: [{ role: "tool", content: "42" }],
+  });
+  assert.equal(noToolId.valid, false);
+  assert.ok(noToolId.errors.some((e) => e.includes("tool_call_id")));
+
+  const badTemp = validatePayload(chat, {
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: "hi" }],
+    temperature: 3,
+  });
+  assert.equal(badTemp.valid, false);
+  assert.ok(badTemp.errors.some((e) => e.includes("between 0 and 2")));
+});
+
+/**
+ * The expensive mistake: a prompt built by string-interpolating a subscriber
+ * address. It leaves the trust boundary and reaches a third-party provider, and
+ * nothing downstream can pull it back.
+ */
+test("OmniAI validation refuses a prompt carrying subscriber identity", () => {
+  const chat = findEntry("omniai-chat-completions");
+  const leaked = validatePayload(chat, {
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: "Summarise the account for tel:94771234567" }],
+    max_completion_tokens: 200,
+  });
+  assert.equal(leaked.valid, false);
+  assert.ok(leaked.errors.some((e) => e.includes("trust boundary")));
+
+  const image = findEntry("omniai-image-generation");
+  const leakedUser = validatePayload(image, { prompt: "a red apple", user: "tel:94771234567" });
+  assert.equal(leakedUser.valid, false);
+});
+
+test("OmniAI validation warns about an uncapped call and about billed fan-out", () => {
+  const chat = findEntry("omniai-chat-completions");
+  const uncapped = validatePayload(chat, {
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: "hi" }],
+    n: 4,
+  });
+  assert.equal(uncapped.valid, true, uncapped.errors.join("; "));
+  assert.ok(uncapped.warnings.some((w) => w.includes("max_completion_tokens")));
+  assert.ok(uncapped.warnings.some((w) => w.includes("BILLS")));
+  assert.ok(uncapped.warnings.some((w) => w.includes("spends real tokens")));
+});
+
+test("every documented OmniAI sample validates against its own spec", () => {
+  for (const s of omniaiServices()) {
+    const result = validatePayload(s, s.sampleRequest);
+    assert.equal(result.valid, true, `${s.id} sample is invalid: ${result.errors.join("; ")}`);
+  }
+});
+
+test("diagnose routes OmniAI symptoms away from the telco signatures", () => {
+  assert.equal(diagnose("TOKEN_QUOTA_EXCEEDED").matchedOn, "omniaiError");
+  assert.match(diagnose("omniai returns 401").fix, /no Bearer prefix/);
+  assert.match(diagnose("the answer is truncated").fix, /finish_reason/);
+  // …without capturing the telco ones.
+  assert.equal(diagnose("callbacks never arrive").matchedOn, "symptom");
+  assert.equal(diagnose("E1303").code, "E1303");
+});
+
+test("the OmniAI reference document states the conventions that differ", () => {
+  const doc = readFileSync(join(repoRoot, "references", "14-omni-ai.md"), "utf8");
+  for (const fact of [
+    "app_<keyId>.<keyValue>",
+    "https://api.ideamart.io/omniai/api",
+    "OMNIAI_API_KEY",
+    "finish_reason",
+    "max_completion_tokens",
+    "TOKEN_QUOTA_EXCEEDED",
+  ]) {
+    assert.ok(doc.includes(fact), `14-omni-ai.md does not document ${fact}`);
+  }
+  // The two inversions that break a shared client.
+  assert.match(doc, /no `?Bearer`?/i);
+  assert.match(doc, /There is no `statusCode` field/);
+});
+
+test("no OmniAI key-shaped string is committed", () => {
+  // A real key is app_ + hex keyId + "." + a long hex keyValue. The published
+  // docs use one as an example; it must not be copied into this repo.
+  const keyShaped = /app_[0-9a-f]{6,}\.[0-9a-f]{16,}/;
+  const skipDirs = new Set([".git", "node_modules"]);
+  const offenders = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (!skipDirs.has(entry.name)) walk(path);
+        continue;
+      }
+      let content;
+      try {
+        content = readFileSync(path, "utf8");
+      } catch {
+        continue;
+      }
+      if (keyShaped.test(content)) offenders.push(path.replace(repoRoot, "."));
+    }
+  };
+  walk(repoRoot);
+  assert.deepEqual(
+    offenders,
+    [],
+    `OmniAI key-shaped strings found:\n${offenders.join("\n")}\n` +
+      `Rotate it at https://omniai.ideamart.io before anything else.`
+  );
 });
 
 /* ── Lookup ──────────────────────────────────────────────────────────────── */
@@ -302,9 +518,9 @@ test("diagnose degrades to search when nothing matches", () => {
 
 /* ── Repo consistency ────────────────────────────────────────────────────── */
 
-test("all thirteen reference documents exist", () => {
+test("all fourteen reference documents exist", () => {
   const files = readdirSync(join(repoRoot, "references")).filter((f) => f.endsWith(".md"));
-  assert.equal(files.length, 13, `expected 13 reference docs, found ${files.length}`);
+  assert.equal(files.length, 14, `expected 14 reference docs, found ${files.length}`);
 });
 
 /**
@@ -391,6 +607,20 @@ test("the curl reference documents every endpoint, parameter and response field"
     }
   }
 
+  for (const service of omniaiServices()) {
+    if (!doc.includes(`POST ${urlFor(service)}`)) missing.push(`endpoint ${urlFor(service)}`);
+    if (!doc.includes(`curl -sS -X POST "$${service.envVar}"`)) {
+      missing.push(`runnable request for ${service.id}`);
+    }
+    for (const p of service.parameters) {
+      if (!doc.includes(`\`${p.name}\``)) missing.push(`${service.id}.${p.name}`);
+      if (!documents(p.description)) missing.push(`definition of ${service.id}.${p.name}`);
+    }
+    for (const f of service.responseFields || []) {
+      if (!documents(f.description)) missing.push(`response field ${service.id}.${f.name}`);
+    }
+  }
+
   assert.deepEqual(missing, [], `curl reference is missing:\n${missing.join("\n")}`);
 });
 
@@ -441,6 +671,12 @@ test("the env example exposes only credentials and per-service endpoints", () =>
     "IDEAMART_CAAS_DEBIT_URL",
     "IDEAMART_CAAS_BALANCE_URL",
     "IDEAMART_LBS_URL",
+    // OmniAI is a separate product with a separate key, so it gets its own
+    // prefix. A shared IDEAMART_ variable would invite one client to pick up
+    // the other product's secret.
+    "OMNIAI_API_KEY",
+    "OMNIAI_CHAT_COMPLETIONS_URL",
+    "OMNIAI_IMAGE_GENERATIONS_URL",
   ]);
 
   const unexpected = declared.filter((v) => !allowed.has(v));
@@ -453,9 +689,11 @@ test("the env example exposes only credentials and per-service endpoints", () =>
 
 test("every service endpoint variable maps to a real catalog service", () => {
   const example = readFileSync(join(repoRoot, "templates", ".env.example"), "utf8");
-  const urls = [...example.matchAll(/^#?IDEAMART_\w+_URL=(\S+)/gm)].map((m) => m[1]);
+  const urls = [...example.matchAll(/^#?(?:IDEAMART|OMNIAI)_\w+_URL=(\S+)/gm)].map((m) => m[1]);
   const known = new Set(
-    catalog.services.map((s) => s.absoluteUrl || `${catalog.baseUrls.primary}${s.path}`)
+    [...catalog.services, ...omniaiServices()].map(
+      (s) => s.absoluteUrl || `${catalog.baseUrls.primary}${s.path}`
+    )
   );
   for (const url of urls) {
     assert.ok(known.has(url), `.env.example lists ${url}, which is not a catalog endpoint`);

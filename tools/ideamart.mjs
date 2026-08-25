@@ -11,7 +11,7 @@
  * Commands:
  *   list [category] [--direction=outbound|inbound]   List services and callbacks
  *   show <id>                                        Full contract for one
- *   code <statusCode>                                Decode a status code
+ *   code <statusCode|httpStatus|OMNIAI_CODE>         Decode a status or error code
  *   diagnose <symptom|code>                          Most likely cause + fix
  *   search <query>                                   Search everything
  *   curl <id> [key=value ...]                        Runnable request + definitions
@@ -20,6 +20,7 @@
  *   checklist                                        Go-live checklist
  *   reference <doc>                                  Print a reference doc
  *   platform                                         Base URLs, operators, conventions
+ *   omniai [models|errors]                           The OmniAI (AI gateway) contract
  *   help
  */
 
@@ -30,7 +31,10 @@ import {
   catalog,
   diagnose,
   findEntry,
+  isOmniai,
+  lookupOmniError,
   lookupStatusCode,
+  omniaiServices,
   readReference,
   search,
   toCurl,
@@ -132,6 +136,7 @@ function cmdShow() {
     ...entry,
     url: entry.kind === "service" ? urlFor(entry) : undefined,
     statusCodeDetail: (entry.statusCodes || []).map(lookupStatusCode),
+    errorCodeDetail: (entry.errorCodes || []).map(lookupOmniError),
   };
 
   out(data, (d) => {
@@ -144,6 +149,12 @@ function cmdShow() {
       console.log(`  ${bold("Dedupe key")}  ${d.dedupeKey}`);
     }
     if (d.movesMoney) console.log(`  ${red("⚠  This call moves real money.")}`);
+    if (d.spendsTokens) console.log(`  ${red("⚠  This call spends real tokens from your OmniAI balance.")}`);
+    if (isOmniai(d)) {
+      const auth = catalog.omniai.auth;
+      console.log(`  ${bold("Auth")}      ${auth.header}: ${auth.format}  ${dim(`(${auth.envVar})`)}`);
+      console.log(`  ${yellow("⚠  Failures arrive as real HTTP status codes. There is no statusCode field and no S1000.")}`);
+    }
     if (d.requiresProvisioning) console.log(`  ${yellow(`⚠  Requires provisioning: ${d.requiresProvisioning}`)}`);
 
     const spec = d.parameters || d.fields || [];
@@ -186,13 +197,40 @@ function cmdShow() {
         console.log(`    ${colour(s.code.padEnd(7))} ${dim(s.class.padEnd(14))} ${s.description}`);
       }
     }
+    if (d.errorCodeDetail?.length) {
+      console.log(`\n  ${bold("Errors")}  ${dim("HTTP status, then the code in error.code")}`);
+      for (const e of d.errorCodeDetail) {
+        const colour = CLASS_COLOR[e.class] || dim;
+        console.log(`    ${colour(e.code.padEnd(22))} ${dim(String(e.http).padEnd(5))} ${dim(e.class.padEnd(14))} ${e.description}`);
+      }
+    }
     console.log(`\n  ${dim(`Full guide: ${d.reference}`)}\n`);
   });
 }
 
 function cmdCode() {
   const code = rest[0];
-  if (!code) fail("usage: ideamart code <statusCode>");
+  if (!code) fail("usage: ideamart code <statusCode|httpStatus|OMNIAI_CODE>");
+
+  // Telco codes are S/E + four digits; anything else that resolves in the
+  // OmniAI table is an OmniAI failure. Deciding by shape keeps `code 429` and
+  // `code E1603` from ever being answered from the wrong table.
+  const isTelcoShaped = /^[SE]\d{4}$/i.test(String(code).trim());
+  if (!isTelcoShaped) {
+    const omni = lookupOmniError(code);
+    if (omni.known) {
+      return out({ source: "omniai", ...omni }, (d) => {
+        const colour = CLASS_COLOR[d.class] || dim;
+        console.log(`\n  ${colour(bold(d.code))}  ${dim(`OmniAI · HTTP ${d.http} · ${d.class}`)}`);
+        console.log(`  ${d.description}\n`);
+        console.log(`  ${bold("Do this")}  ${d.action}`);
+        console.log(`  ${bold("Retry?")}   ${d.retry ? green("yes, with backoff") : red("no")}`);
+        if (d.affects.length) console.log(`  ${bold("Affects")}  ${dim(d.affects.join(", "))}`);
+        console.log(`\n  ${dim("references/14-omni-ai.md")}\n`);
+      });
+    }
+  }
+
   const info = lookupStatusCode(code);
 
   out(info, (d) => {
@@ -306,6 +344,7 @@ function cmdCurl() {
   const data = {
     service: entry.id,
     name: entry.name,
+    omniai: isOmniai(entry) || undefined,
     endpoint: `POST ${urlFor(entry)}`,
     envVar: entry.envVar,
     url: urlFor(entry),
@@ -316,12 +355,19 @@ function cmdCurl() {
     responseFields: entry.responseFields,
     validation,
     rules: entry.rules,
-    reference: "references/13-curl-reference.md",
+    reference: isOmniai(entry)
+      ? "references/14-omni-ai.md"
+      : "references/13-curl-reference.md",
   };
 
   out(data, (d) => {
     console.log(`\n  ${bold(d.name)}  ${dim(d.endpoint)}`);
-    console.log(`  ${dim(`endpoint variable ${d.envVar}`)}\n`);
+    console.log(`  ${dim(`endpoint variable ${d.envVar}`)}`);
+    if (d.omniai) {
+      const auth = catalog.omniai.auth;
+      console.log(`  ${dim(`auth ${auth.header}: ${auth.format} — from ${auth.envVar}, no Bearer prefix`)}`);
+    }
+    console.log();
 
     console.log(`  ${bold("Parameters")}`);
     for (const p of d.parameters) {
@@ -335,7 +381,10 @@ function cmdCurl() {
     console.log(indent(d.curl, 2));
 
     if (d.sampleResponse) {
-      console.log(`\n  ${bold("Response")}  ${dim("HTTP 200 — success is statusCode S1000, nothing else")}\n`);
+      const note = d.omniai
+        ? "HTTP 200 — failures arrive as real HTTP status codes with an error object"
+        : "HTTP 200 — success is statusCode S1000, nothing else";
+      console.log(`\n  ${bold("Response")}  ${dim(note)}\n`);
       console.log(indent(JSON.stringify(d.sampleResponse, null, 2), 4));
     }
     if (d.responseFields?.length) {
@@ -429,7 +478,7 @@ function cmdReference() {
       "01-getting-started", "02-sms", "03-ussd", "04-subscription", "05-caas",
       "06-lbs-ivr", "07-callbacks", "08-status-codes",
       "09-security-best-practices", "10-production-checklist", "11-any-stack",
-      "12-implementation-playbook", "13-curl-reference",
+      "12-implementation-playbook", "13-curl-reference", "14-omni-ai",
     ];
     return out({ documents: docs }, (d) => {
       console.log(`\n  ${bold("Reference documents")}\n`);
@@ -465,6 +514,94 @@ function cmdPlatform() {
   });
 }
 
+/**
+ * The OmniAI contract in one screen.
+ *
+ * It gets its own command rather than being folded into `platform` because the
+ * two products agree on almost nothing: different host, different credential,
+ * different failure envelope, no subscriber. Anyone who reads `platform` and
+ * assumes it also describes the AI gateway writes a broken client.
+ */
+function cmdOmniai() {
+  const o = catalog.omniai;
+  const topic = (rest[0] || "").toLowerCase();
+
+  if (topic === "models") {
+    return out({ models: o.models }, (d) => {
+      console.log(`\n  ${bold("OmniAI models")}\n`);
+      for (const m of d.models) {
+        console.log(`    ${cyan(m.id.padEnd(24))} ${dim(m.provider.padEnd(10))} ${dim(m.endpoint)}`);
+        console.log(`      ${dim(m.note)}`);
+      }
+      console.log();
+    });
+  }
+
+  if (topic === "errors") {
+    const errors = Object.keys(o.errors).map(lookupOmniError);
+    return out({ errors }, (d) => {
+      console.log(`\n  ${bold("OmniAI errors")}  ${dim("HTTP status, then the code in error.code")}\n`);
+      for (const e of d.errors) {
+        const colour = CLASS_COLOR[e.class] || dim;
+        console.log(`    ${colour(e.code.padEnd(22))} ${dim(String(e.http).padEnd(5))} ${dim(e.class.padEnd(14))} ${e.description}`);
+        console.log(`      ${dim(e.action)}`);
+      }
+      console.log(`\n  ${dim("ideamart code <CODE>  ·  references/14-omni-ai.md")}\n`);
+    });
+  }
+
+  const data = {
+    name: o.name,
+    summary: o.summary,
+    baseUrl: o.baseUrl,
+    portal: o.portal,
+    docs: o.docs,
+    auth: o.auth,
+    models: o.models,
+    rateLimits: o.rateLimits,
+    differsFromTelco: o.differsFromTelco,
+    services: omniaiServices().map((x) => ({
+      id: x.id,
+      name: x.name,
+      endpoint: `POST ${urlFor(x)}`,
+      envVar: x.envVar,
+      summary: x.summary,
+    })),
+    practices: o.practices,
+    statusPages: o.statusPages,
+    reference: o.reference,
+  };
+
+  out(data, (d) => {
+    console.log(`\n  ${bold(d.name)} — ${dim(d.baseUrl)}`);
+    console.log(`  ${d.summary}\n`);
+
+    console.log(`  ${bold("Auth")}      ${d.auth.header}: ${cyan(d.auth.format)}   ${dim(`from ${d.auth.envVar}`)}`);
+    console.log(`  ${dim(`            ${d.auth.note}`)}`);
+    console.log(`  ${bold("Key from")}  ${d.auth.issuedBy}\n`);
+
+    console.log(`  ${bold("Endpoints")}`);
+    for (const x of d.services) {
+      console.log(`    ${cyan(x.id.padEnd(26))} ${dim(x.endpoint)}`);
+      console.log(`      ${dim(x.summary)}`);
+    }
+
+    console.log(`\n  ${bold("Models")}`);
+    for (const m of d.models) console.log(`    ${cyan(m.id.padEnd(24))} ${dim(m.provider)}`);
+
+    console.log(`\n  ${bold("Rate limits")}  ${dim(d.rateLimits.reset)} ${dim(d.rateLimits.onExceed)}`);
+
+    console.log(`\n  ${red(bold("Not the telco platform"))}`);
+    d.differsFromTelco.forEach((x) => console.log(`    ${yellow("!")} ${x}`));
+
+    console.log(`\n  ${bold("Rules")}`);
+    d.practices.forEach((x) => console.log(`    ${x.severity === "critical" ? red("!") : yellow("!")} ${x.title} — ${dim(x.detail)}`));
+
+    console.log(`\n  ${dim(`ideamart show omniai-chat-completions  ·  ideamart omniai models  ·  ideamart omniai errors`)}`);
+    console.log(`  ${dim(`Full guide: ${d.reference}`)}\n`);
+  });
+}
+
 function cmdHelp() {
   console.log(`
   ${bold("ideamart")} — offline reference for the Ideamart API ${dim(`(catalog v${catalog.catalogVersion})`)}
@@ -477,6 +614,8 @@ function cmdHelp() {
     search <query>                                   Search everything
     show <id>                                        Full contract for one service
     platform                                         Base URLs, operators, conventions
+    omniai [models|errors]                           The OmniAI AI gateway: auth, models,
+                                                     endpoints, errors
 
   ${bold("BUILD")}
     curl <id> [key=value ...]                        Runnable request + parameter and
@@ -488,7 +627,8 @@ function cmdHelp() {
     client — that is the integration, in any language.
 
   ${bold("DEBUG")}
-    code <statusCode>                                Decode a status code
+    code <statusCode|httpStatus|OMNIAI_CODE>         Decode a telco status code or an
+                                                     OmniAI error
     diagnose "<symptom>"                             Most likely cause and fix
 
   ${bold("GUIDANCE")}
@@ -506,6 +646,9 @@ function cmdHelp() {
     ${dim("$")} node tools/ideamart.mjs validate sms-send '{"message":"hi","destinationAddresses":"tel:94771234567"}'
     ${dim("$")} node tools/ideamart.mjs curl caas-direct-debit externalTrxId=ORD-1001 amount=6.00
     ${dim("$")} node tools/ideamart.mjs reference 13-curl-reference
+    ${dim("$")} node tools/ideamart.mjs omniai
+    ${dim("$")} node tools/ideamart.mjs curl omniai-chat-completions model=claude-sonnet-4
+    ${dim("$")} node tools/ideamart.mjs code TOKEN_QUOTA_EXCEEDED
 
   ${dim("Add --json to any command for machine-readable output.")}
   ${dim("Offline and read-only: no network calls, and it never sees your credentials.")}
@@ -540,6 +683,8 @@ const COMMANDS = {
   docs: cmdReference,
   platform: cmdPlatform,
   info: cmdPlatform,
+  omniai: cmdOmniai,
+  ai: cmdOmniai,
   help: cmdHelp,
 };
 

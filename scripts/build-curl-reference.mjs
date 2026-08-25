@@ -17,7 +17,14 @@
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { catalog, lookupStatusCode, repoRoot, urlFor } from "../tools/catalog.mjs";
+import {
+  catalog,
+  lookupOmniError,
+  lookupStatusCode,
+  omniaiServices,
+  repoRoot,
+  urlFor,
+} from "../tools/catalog.mjs";
 
 const OUT = join(repoRoot, "references", "13-curl-reference.md");
 const check = process.argv.includes("--check");
@@ -57,7 +64,7 @@ function exampleBody(service) {
 
 function parameterTable(spec, { label = "Parameter", required = "Required" } = {}) {
   const rows = spec.map((p) => {
-    const type = p.enum ? `enum` : p.type;
+    const type = p.enum ? `enum` : md(p.type);
     const values = p.enum ? ` One of \`${p.enum.join("\`, \`")}\`.` : "";
     const need = p.required ? `**${required}**` : "Optional";
     return `| \`${p.name}\` | ${type} | ${need} | ${md(p.description)}${md(values)} |`;
@@ -126,10 +133,102 @@ function callbackCurl(cb) {
   ].join("\n");
 }
 
+/**
+ * The OmniAI request. Two things differ from every telco command on this page,
+ * and both matter: the credential is a header rather than a body field, and the
+ * heredoc is quoted so that a `$` inside a prompt is not eaten by the shell.
+ */
+function omniaiCurl(service) {
+  const auth = catalog.omniai.auth;
+  const body = {};
+  for (const p of service.parameters || []) {
+    const sample = service.sampleRequest?.[p.name];
+    if (sample !== undefined) body[p.name] = sample;
+    else if (p.required) body[p.name] = `<${p.name}>`;
+  }
+  return [
+    "```bash",
+    `curl -sS -X POST "$${service.envVar}" \\`,
+    `  -H 'Content-Type: application/json' \\`,
+    `  -H "${auth.header}: $${auth.envVar}" \\`,
+    `  --max-time 120 \\`,
+    `  -d @- <<'REQUEST'`,
+    JSON.stringify(body, null, 2),
+    "REQUEST",
+    "```",
+  ].join("\n");
+}
+
+/** OmniAI failures: an HTTP status and a code, not an S1000 envelope. */
+function omniaiErrorTable(codes) {
+  const rows = codes.map((code) => {
+    const e = lookupOmniError(code);
+    return `| \`${e.code}\` | ${e.http} | ${e.class} | ${md(e.description)} → ${md(e.action)} |`;
+  });
+  return [`| Code | HTTP | Class | Meaning and fix |`, `|---|---|---|---|`, ...rows].join("\n");
+}
+
+function omniaiSection(s) {
+  const parts = [];
+  parts.push(`---\n`);
+  parts.push(`## ${s.name}\n`);
+  parts.push(`${s.summary}\n`);
+
+  parts.push(
+    [
+      `| | |`,
+      `|---|---|`,
+      `| **Endpoint** | \`POST ${urlFor(s)}\` |`,
+      `| **Environment variable** | \`${s.envVar}\` |`,
+      `| **Auth** | \`${catalog.omniai.auth.header}: ${catalog.omniai.auth.format}\` from \`${catalog.omniai.auth.envVar}\` — header, not body, and no \`Bearer\` prefix |`,
+      `| **Content type** | \`application/json\` |`,
+      `| **Full guide** | [14-omni-ai.md](14-omni-ai.md) |`,
+    ].join("\n") + "\n"
+  );
+
+  parts.push(
+    `> **This call spends real tokens** from your OmniAI balance, and it fails with real HTTP\n` +
+      `> status codes rather than an \`S1000\` envelope. Both rules are the opposite of every telco\n` +
+      `> endpoint above.\n`
+  );
+
+  parts.push(`### Request parameters\n`);
+  parts.push(parameterTable(s.parameters) + "\n");
+
+  parts.push(`### Request\n`);
+  parts.push(omniaiCurl(s) + "\n");
+
+  parts.push(`### Response\n`);
+  parts.push(`HTTP 200 with the body below. Any other status is a failure — see the table after it.\n`);
+  parts.push(json(s.sampleResponse) + "\n");
+
+  if (s.responseFields?.length) {
+    parts.push(`### Response fields\n`);
+    parts.push(responseTable(s.responseFields) + "\n");
+  }
+
+  if (s.errorCodes?.length) {
+    parts.push(`### Errors for this endpoint\n`);
+    parts.push(omniaiErrorTable(s.errorCodes) + "\n");
+    parts.push(
+      `The body of a failure is \`{ "error": { "message", "type", "param", "code" } }\`. ` +
+        `**Branch on \`error.code\`**, not on the message. ${md(catalog.omniai.rateLimits.note)}\n`
+    );
+  }
+
+  if (s.rules?.length) {
+    parts.push(`### Rules\n`);
+    parts.push(s.rules.map((r) => `- ${r}`).join("\n") + "\n");
+  }
+
+  return parts.join("\n");
+}
+
 /* ── Document ────────────────────────────────────────────────────────────── */
 
 const services = catalog.services;
 const callbacks = catalog.callbacks;
+const aiServices = omniaiServices();
 
 const preamble = `<!-- Generated from catalog/ideamart-api.json by scripts/build-curl-reference.mjs. Do not edit directly. -->
 
@@ -168,6 +267,11 @@ Content-Type: application/json
   A masked application receives a hash (\`tel:hu3b84346f…\`) instead of a number; it is opaque,
   so send back exactly what you received.
 - **LBS is on a different host** (\`${catalog.baseUrls.lbs}\`) from everything else.
+- **OmniAI is the one exception to all of the above.** The AI gateway
+  (\`${catalog.omniai.baseUrl}\`) authenticates with an \`${catalog.omniai.auth.header}\` header,
+  returns real HTTP status codes with an \`error\` object, and has no subscriber, no \`tel:\`
+  address and no callbacks. It is at the [end of this page](#the-ai-gateway--omniai), kept
+  separate so its conventions never get applied to a telco call or the other way round.
 
 ## Before you run anything
 
@@ -220,6 +324,12 @@ ${callbacks
     (c) =>
       `| [${c.name}](#${anchor(c.name)}) | \`POST <your-host>${c.suggestedPath}\` | ${c.configuredIn} |`
   )
+  .join("\n")}
+
+| AI gateway | Endpoint | Environment variable |
+|---|---|---|
+${aiServices
+  .map((s) => `| [${s.name}](#${anchor(s.name)}) | \`POST ${urlFor(s)}\` | \`${s.envVar}\` |`)
   .join("\n")}
 
 ---
@@ -361,11 +471,39 @@ Python, Java, Go, PHP and C# — worked examples to read for shape, not output t
 | Every status code, classified | [08-status-codes.md](08-status-codes.md) |
 `;
 
+const aiPreamble = `---
+
+# The AI gateway — OmniAI
+
+${catalog.omniai.summary}
+
+It is a separate product from everything above, and the differences are the kind that break an
+integration quietly rather than loudly:
+
+${catalog.omniai.differsFromTelco.map((x) => `- ${x}`).join("\n")}
+
+Get a key at ${catalog.omniai.portal}, then export it alongside the endpoints:
+
+\`\`\`bash
+export ${catalog.omniai.auth.envVar}='app_XXXXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'   # never commit it
+${aiServices.map((s) => `export ${s.envVar}='${urlFor(s)}'`).join("\n")}
+\`\`\`
+
+\`--max-time 120\` rather than 15 on these: a large completion or a high-quality image
+legitimately takes tens of seconds, and a 15-second timeout will cancel a call you have already
+been billed for. The heredoc is quoted (\`<<'REQUEST'\`) because nothing in the body needs to
+expand and a \`$\` inside a prompt must survive the shell.
+
+**Models:** ${catalog.omniai.models.map((m) => `\`${m.id}\` (${m.provider})`).join(", ")}.
+`;
+
 const document = [
   preamble,
   ...services.map(serviceSection),
   `---\n\n# Inbound callbacks — Ideamart calls you\n`,
   ...callbacks.map(callbackSection),
+  aiPreamble,
+  ...aiServices.map(omniaiSection),
   epilogue,
 ].join("\n");
 
@@ -385,6 +523,7 @@ if (current === document) {
 } else {
   writeFileSync(OUT, document);
   console.log(
-    `wrote references/13-curl-reference.md — ${services.length} endpoints, ${callbacks.length} callbacks.`
+    `wrote references/13-curl-reference.md — ${services.length} endpoints, ${callbacks.length} callbacks, ` +
+      `${aiServices.length} OmniAI endpoints.`
   );
 }
